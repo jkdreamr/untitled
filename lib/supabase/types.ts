@@ -73,9 +73,9 @@ export type Database = {
         Relationships: []
       }
       profiles: {
-        Row: { avatar_path: string | null; bio: string | null; created_at: string; display_name: string; follower_count: number; following_count: number; handle: string; id: string; interests: string[]; links: Json; onboarded: boolean; piece_seq: number; pinned_piece_id: string | null; quiet_mode: boolean; role: Database["public"]["Enums"]["user_role"]; updated_at: string }
-        Insert: { avatar_path?: string | null; bio?: string | null; created_at?: string; display_name: string; follower_count?: number; following_count?: number; handle: string; id: string; interests?: string[]; links?: Json; onboarded?: boolean; piece_seq?: number; pinned_piece_id?: string | null; quiet_mode?: boolean; role?: Database["public"]["Enums"]["user_role"]; updated_at?: string }
-        Update: { avatar_path?: string | null; bio?: string | null; created_at?: string; display_name?: string; follower_count?: number; following_count?: number; handle?: string; id?: string; interests?: string[]; links?: Json; onboarded?: boolean; piece_seq?: number; pinned_piece_id?: string | null; quiet_mode?: boolean; role?: Database["public"]["Enums"]["user_role"]; updated_at?: string }
+        Row: { avatar_path: string | null; bio: string | null; created_at: string; display_name: string; follower_count: number; following_count: number; handle: string; id: string; interests: string[]; links: Json; onboarded: boolean; piece_seq: number; pinned_piece_id: string | null; quiet_mode: boolean; role: Database["public"]["Enums"]["user_role"]; suspended: boolean; updated_at: string }
+        Insert: { avatar_path?: string | null; bio?: string | null; created_at?: string; display_name: string; follower_count?: number; following_count?: number; handle: string; id: string; interests?: string[]; links?: Json; onboarded?: boolean; piece_seq?: number; pinned_piece_id?: string | null; quiet_mode?: boolean; role?: Database["public"]["Enums"]["user_role"]; suspended?: boolean; updated_at?: string }
+        Update: { avatar_path?: string | null; bio?: string | null; created_at?: string; display_name?: string; follower_count?: number; following_count?: number; handle?: string; id?: string; interests?: string[]; links?: Json; onboarded?: boolean; piece_seq?: number; pinned_piece_id?: string | null; quiet_mode?: boolean; role?: Database["public"]["Enums"]["user_role"]; suspended?: boolean; updated_at?: string }
         Relationships: []
       }
       rate_limits: {
@@ -109,6 +109,9 @@ export type Database = {
       can_view_piece: { Args: { p_id: string }; Returns: boolean }
       consume_rate_limit: { Args: { p_action: string; p_max: number; p_window_seconds: number }; Returns: boolean }
       get_following_feed: { Args: { p_cursor_id?: string; p_cursor_ts?: string; p_limit?: number }; Returns: { card: Json; id: string; published_at: string }[] }
+      get_my_dashboard: { Args: Record<string, never>; Returns: Json }
+      resolve_report: { Args: { p_report_id: string; p_status: Database["public"]["Enums"]["report_status"] }; Returns: undefined }
+      suspend_user: { Args: { p_uid: string; p_suspended: boolean }; Returns: undefined }
       get_piece: { Args: { p_id: string }; Returns: Json }
       get_piece_comments: { Args: { p_id: string; p_limit?: number }; Returns: { comment: Json }[] }
       get_piece_reactions: { Args: { p_id: string }; Returns: Json }

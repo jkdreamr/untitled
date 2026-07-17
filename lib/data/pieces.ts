@@ -60,6 +60,18 @@ export async function getProfilePieces(
   return { cards, nextCursor: last ? { ts: last.published_at, id: last.id } : null };
 }
 
+/** Fetch a set of cards by id (order preserved), batch-signed. */
+export async function getCardsByIds(ids: string[]): Promise<PieceCard[]> {
+  if (ids.length === 0) return [];
+  const supabase = await createClient();
+  const results = await Promise.all(
+    ids.map((id) => supabase.rpc("piece_card_json", { p_id: id }).then((r) => parseCard(r.data))),
+  );
+  const cards = results.filter((c): c is PieceCard => !!c);
+  await attachSignedUrls(supabase, cards);
+  return cards;
+}
+
 export async function getPiece(id: string): Promise<PieceCard | null> {
   const supabase = await createClient();
   const { data } = await supabase.rpc("get_piece", { p_id: id });

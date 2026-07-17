@@ -24,6 +24,9 @@ export const SERVER_ENV = {
   MUX_WEBHOOK_SECRET: process.env.MUX_WEBHOOK_SECRET ?? "",
 
   ENABLE_SCOUT: process.env.ENABLE_SCOUT === "true" || process.env.ENABLE_SCOUT === "1",
+
+  // Shared secret protecting cron-driven routes (enrichment drain, recs refresh).
+  CRON_SECRET: process.env.CRON_SECRET ?? "",
 } as const;
 
 /** Capability flags derived from which server keys are present. */
