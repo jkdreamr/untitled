@@ -35,7 +35,9 @@ export async function POST(request: Request) {
       cors_origin: origin,
       new_asset_settings: {
         playback_policies: ["public"],
-        passthrough: parsed.data.pieceId,
+        // Bind the uploader's identity (from the session, never client input) so
+        // the webhook can enforce ownership. Prevents hijacking a victim's piece.
+        passthrough: `${user.id}:${parsed.data.pieceId}`,
         video_quality: "basic",
       },
     });

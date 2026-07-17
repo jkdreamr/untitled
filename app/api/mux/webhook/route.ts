@@ -27,9 +27,26 @@ export async function POST(request: Request) {
   if (!admin) return NextResponse.json({ error: "server not configured" }, { status: 503 });
 
   const data = event.data ?? {};
-  const pieceId = typeof data.passthrough === "string" ? data.passthrough : undefined;
+  // passthrough is "<uploader_uid>:<pieceId>" (bound server-side at upload time).
+  const passthrough = typeof data.passthrough === "string" ? data.passthrough : "";
+  const sep = passthrough.indexOf(":");
+  const uid = sep > 0 ? passthrough.slice(0, sep) : undefined;
+  const pieceId = sep > 0 ? passthrough.slice(sep + 1) : undefined;
+  if (!uid || !pieceId) return NextResponse.json({ received: true });
 
-  if (event.type === "video.asset.ready" && pieceId) {
+  if (event.type === "video.asset.ready") {
+    // Ownership gate: only the piece owned by the uploader, and only if it's a
+    // video piece. Closes the cross-user hijack (attacker can't target a victim).
+    const { data: piece } = await admin
+      .from("pieces")
+      .select("id, medium")
+      .eq("id", pieceId)
+      .eq("artist_id", uid)
+      .maybeSingle();
+    // Race: publishPiece may not have created the row yet -> ask Mux to retry.
+    if (!piece) return NextResponse.json({ pending: true }, { status: 503 });
+    if (piece.medium !== "video") return NextResponse.json({ ignored: true });
+
     const playbackId = Array.isArray(data.playback_ids)
       ? (data.playback_ids[0] as { id?: string } | undefined)?.id
       : undefined;
@@ -45,20 +62,21 @@ export async function POST(request: Request) {
     await admin
       .from("pieces")
       .update({ mux_playback_id: playbackId ?? null, mux_asset_id: assetId })
-      .eq("id", pieceId);
+      .eq("id", pieceId)
+      .eq("artist_id", uid);
 
     await admin.from("piece_media").insert({
-      piece_id: pieceId,
-      kind: "video",
-      storage_path: null,
-      width,
-      height,
-      duration_seconds: duration,
-      position: 0,
+      piece_id: pieceId, kind: "video", storage_path: null, width, height,
+      duration_seconds: duration, position: 0,
     });
-  } else if (event.type === "video.asset.errored" && pieceId) {
-    // hide a piece whose asset failed to process
-    await admin.from("pieces").update({ status: "hidden" }).eq("id", pieceId);
+  } else if (event.type === "video.asset.errored") {
+    // hide only the uploader's own failed video (never a victim's piece)
+    await admin
+      .from("pieces")
+      .update({ status: "hidden" })
+      .eq("id", pieceId)
+      .eq("artist_id", uid)
+      .eq("medium", "video");
   }
 
   return NextResponse.json({ received: true });
