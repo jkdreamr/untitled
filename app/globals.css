@@ -1,0 +1,345 @@
+@import "tailwindcss";
+
+/* Turbopack + Tailwind v4 HMR reliability: explicit content sources. */
+@source "../app/**/*.{ts,tsx}";
+@source "../components/**/*.{ts,tsx}";
+
+/* ============================================================================
+   NOVUM design system — locked
+   Ink background, bone text. Lime is a rare interaction accent only.
+   The art is the only color on the platform.
+   ========================================================================== */
+@theme {
+  /* --- core palette --- */
+  --color-ink: #0a0a0a; /* background */
+  --color-ink-raised: #100f0e; /* cards, raised surfaces */
+  --color-ink-sunken: #070706; /* wells, inputs */
+  --color-ink-veil: #0a0a0adb; /* scrim over media */
+
+  --color-bone: #ede8df; /* primary text */
+  --color-bone-80: #ede8dfcc;
+  --color-bone-64: #ede8dfa3; /* secondary text */
+  --color-bone-52: #ede8df85; /* metadata — AA-compliant (~4.7:1 on ink) */
+  --color-bone-46: #ede8df75; /* muted / captions (large text only) */
+  --color-bone-32: #ede8df52; /* faint metadata */
+  --color-bone-16: #ede8df29; /* strong hairline */
+  --color-bone-10: #ede8df1a; /* hairline border */
+  --color-bone-06: #ede8df0f; /* faint fill */
+
+  --color-lime: #c8ff5e; /* THE accent — use sparingly */
+  --color-lime-dim: #c8ff5e33;
+  --color-lime-veil: #c8ff5e1f;
+
+  /* semantic aliases */
+  --color-background: var(--color-ink);
+  --color-foreground: var(--color-bone);
+  --color-border: var(--color-bone-10);
+  --color-ring: var(--color-lime);
+
+  /* --- type --- */
+  --font-sans: var(--font-space-grotesk), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", sans-serif;
+  --font-serif: var(--font-instrument-serif), ui-serif, Georgia, "Times New Roman",
+    serif;
+  --font-mono: var(--font-space-mono), ui-monospace, "SF Mono", Menlo, monospace;
+
+  --text-2xs: 0.6875rem; /* 11px — mono metadata */
+  --text-2xs--line-height: 1rem;
+  --text-2xs--letter-spacing: 0.04em;
+
+  /* --- radii — gallery-sharp with a soft touch --- */
+  --radius-xs: 3px;
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+  --radius-xl: 22px;
+  --radius-full: 9999px;
+
+  /* --- motion — restraint. nothing over 300ms, no bounce --- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 150ms;
+  --dur-base: 220ms;
+  --dur-slow: 300ms;
+
+  /* --- shadows — barely-there, cool --- */
+  --shadow-lift: 0 1px 0 0 var(--color-bone-06), 0 18px 40px -24px #000000e6;
+  --shadow-player: 0 -1px 0 0 var(--color-bone-10), 0 -24px 60px -30px #000000;
+
+  /* animation registrations */
+  --animate-rise-in: rise-in var(--dur-slow) var(--ease-out) both;
+  --animate-fade-in: fade-in var(--dur-base) var(--ease-out) both;
+  --animate-veil-up: veil-up var(--dur-slow) var(--ease-out) both;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes veil-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-lime {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: -180% 0;
+  }
+  to {
+    background-position: 180% 0;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* reaction press-and-settle — no bounce, no confetti */
+@keyframes settle {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* waveform draws left-to-right on load — signature moment */
+@keyframes wave-grow {
+  from {
+    transform: scaleY(0.06);
+    opacity: 0.35;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+/* ============================================================================
+   Base
+   ========================================================================== */
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    color-scheme: dark;
+    scrollbar-color: var(--color-bone-16) transparent;
+    scrollbar-width: thin;
+  }
+
+  body {
+    background-color: var(--color-ink);
+    color: var(--color-bone);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv01";
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
+  /* Grain — ~3% warmth over ink. Fixed, non-interactive, above bg / below content. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.032;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+  }
+
+  ::selection {
+    background: var(--color-lime);
+    color: var(--color-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-lime);
+    outline-offset: 2px;
+    border-radius: var(--radius-xs);
+  }
+
+  /* keep native focus off mouse users, honor keyboard */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-bone-16);
+    border-radius: var(--radius-full);
+    border: 3px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-bone-32);
+    background-clip: padding-box;
+  }
+
+  input,
+  textarea,
+  button,
+  select {
+    font: inherit;
+    color: inherit;
+  }
+
+  ::placeholder {
+    color: var(--color-bone-32);
+  }
+
+  /* Never let the grain or fixed layers swallow interaction */
+  #app-root {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+/* ============================================================================
+   Utilities
+   ========================================================================== */
+@layer utilities {
+  .font-serif {
+    font-family: var(--font-serif);
+  }
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+
+  /* metadata line: mono, small, tracked, muted */
+  .meta {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    line-height: 1rem;
+    letter-spacing: 0.04em;
+    color: var(--color-bone-52);
+  }
+
+  .meta-caps {
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+
+  /* editorial serif display */
+  .display {
+    font-family: var(--font-serif);
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    line-height: 0.98;
+  }
+
+  /* hairline divider */
+  .hairline {
+    border-color: var(--color-bone-10);
+  }
+
+  /* skeleton shimmer */
+  .shimmer {
+    background: linear-gradient(
+      100deg,
+      var(--color-bone-06) 30%,
+      var(--color-bone-10) 50%,
+      var(--color-bone-06) 70%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.4s linear infinite;
+  }
+
+  /* preserve authored whitespace safely (words-pieces render through a component,
+     but this class is the visual contract) */
+  .prose-words {
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* focus ring token for custom controls */
+  .ring-lime-focus:focus-visible {
+    outline: 2px solid var(--color-lime);
+    outline-offset: 2px;
+  }
+
+  .stagger-rise > * {
+    animation: rise-in var(--dur-slow) var(--ease-out) both;
+  }
+}
+
+/* ============================================================================
+   Motion accessibility — respected everywhere
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
