@@ -119,7 +119,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     (track: PlayerTrack) => {
       if (currentId === track.id) {
         const audio = audioRef.current;
-        if (audio) (audio.paused ? audio.play() : audio.pause());
+        if (audio) {
+          if (audio.paused) audio.play().catch(() => {});
+          else audio.pause();
+        }
         return;
       }
       setQueue([track]);

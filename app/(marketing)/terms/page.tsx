@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = { title: "terms" };
 
@@ -88,9 +89,9 @@ export default function TermsPage() {
         questions, notices, or anything human? write us at{" "}
         <span className="text-bone">hello@novumlabs.example</span> (a placeholder for now). for
         copyright takedowns specifically, see the{" "}
-        <a href="/dmca" className="text-bone underline decoration-bone-32 underline-offset-4 transition-colors hover:decoration-bone">
+        <Link href="/dmca" className="text-bone underline decoration-bone-32 underline-offset-4 transition-colors hover:decoration-bone">
           dmca page
-        </a>
+        </Link>
         .
       </p>
     </div>

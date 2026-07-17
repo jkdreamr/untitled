@@ -28,18 +28,19 @@ export function Preloader() {
       return;
     }
     setPhase("run");
+    const list = timers.current;
     // 4 faces × ~190ms ≈ 760ms cycle, then fade — comfortably under 1.2s.
     for (let i = 1; i < FACES.length; i++) {
-      timers.current.push(setTimeout(() => setFace(i), i * 190));
+      list.push(setTimeout(() => setFace(i), i * 190));
     }
-    timers.current.push(setTimeout(() => setPhase("leaving"), 900));
-    timers.current.push(
+    list.push(setTimeout(() => setPhase("leaving"), 900));
+    list.push(
       setTimeout(() => {
         setPhase("done");
         sessionStorage.setItem("novum_preloaded", "1");
       }, 1140),
     );
-    return () => timers.current.forEach(clearTimeout);
+    return () => list.forEach(clearTimeout);
   }, []);
 
   if (phase === "done" || phase === "pending") return null;
