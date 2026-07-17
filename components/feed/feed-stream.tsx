@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FeedQueueProvider } from "@/components/player/feed-queue";
-import { loadMoreFeed } from "@/lib/feed/actions";
+import { loadMoreFeed, type MorePage } from "@/lib/feed/actions";
 import { Button } from "@/components/ui/button";
 import type { Cursor } from "@/lib/types";
 import type { PlayerTrack } from "@/components/player/player-context";
@@ -11,10 +11,12 @@ export function FeedStream({
   initialNode,
   initialCursor,
   initialTracks,
+  loader = loadMoreFeed,
 }: {
   initialNode: React.ReactNode;
   initialCursor: Cursor | null;
   initialTracks: PlayerTrack[];
+  loader?: (cursor: Cursor) => Promise<MorePage>;
 }) {
   const [chunks, setChunks] = useState<React.ReactNode[]>([initialNode]);
   const [cursor, setCursor] = useState<Cursor | null>(initialCursor);
@@ -26,14 +28,14 @@ export function FeedStream({
     if (!cursor || loading) return;
     setLoading(true);
     try {
-      const r = await loadMoreFeed(cursor);
+      const r = await loader(cursor);
       setChunks((c) => [...c, r.node]);
       setTracks((t) => [...t, ...r.tracks]);
       setCursor(r.nextCursor);
     } finally {
       setLoading(false);
     }
-  }, [cursor, loading]);
+  }, [cursor, loading, loader]);
 
   useEffect(() => {
     const el = sentinel.current;
