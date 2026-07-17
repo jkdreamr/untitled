@@ -14,7 +14,7 @@ export function ScoutForm() {
 
   if (state.ok) {
     return (
-      <div className="[animation:fade-in_.5s_ease-out_both]">
+      <div className="[animation:fade-in_.3s_ease-out_both]">
         <span aria-hidden className="mb-5 block h-[2px] w-8 bg-lime" />
         <p className="font-serif text-2xl text-bone">you&rsquo;re on the list.</p>
         <p className="mt-2 text-sm leading-relaxed text-bone-64">

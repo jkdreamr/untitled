@@ -19,7 +19,8 @@
   --color-bone: #ede8df; /* primary text */
   --color-bone-80: #ede8dfcc;
   --color-bone-64: #ede8dfa3; /* secondary text */
-  --color-bone-46: #ede8df75; /* muted / captions */
+  --color-bone-52: #ede8df85; /* metadata — AA-compliant (~4.7:1 on ink) */
+  --color-bone-46: #ede8df75; /* muted / captions (large text only) */
   --color-bone-32: #ede8df52; /* faint metadata */
   --color-bone-16: #ede8df29; /* strong hairline */
   --color-bone-10: #ede8df1a; /* hairline border */
@@ -269,7 +270,7 @@
     font-size: var(--text-2xs);
     line-height: 1rem;
     letter-spacing: 0.04em;
-    color: var(--color-bone-46);
+    color: var(--color-bone-52);
   }
 
   .meta-caps {

@@ -104,5 +104,8 @@ function parseLinks(json: unknown): ProfileLink[] {
   if (!Array.isArray(json)) return [];
   return json
     .filter((l): l is ProfileLink => !!l && typeof l === "object" && "url" in l)
+    // defense-in-depth: only ever surface http(s) hrefs (guards against a
+    // javascript:/data: URL that predates the write-side validation)
+    .filter((l) => typeof l.url === "string" && /^https?:\/\//i.test(l.url))
     .slice(0, 6);
 }

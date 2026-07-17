@@ -6,7 +6,15 @@ import type { MediaItem } from "@/lib/types";
  * Image piece — one large uncropped image, or a horizontal "roll" of up to 6.
  * Dimensions are reserved from stored width/height (no CLS); blurhash placeholder.
  */
-export async function ImageRoll({ media, priority = false }: { media: MediaItem[]; priority?: boolean }) {
+export async function ImageRoll({
+  media,
+  priority = false,
+  alt = "",
+}: {
+  media: MediaItem[];
+  priority?: boolean;
+  alt?: string;
+}) {
   const images = media.filter((m) => m.kind === "image" && m.url);
   if (images.length === 0) return null;
 
@@ -16,14 +24,14 @@ export async function ImageRoll({ media, priority = false }: { media: MediaItem[
 
   if (withBlur.length === 1) {
     const { m, blur } = withBlur[0]!;
-    return <SingleImage media={m} blur={blur} priority={priority} />;
+    return <SingleImage media={m} blur={blur} priority={priority} alt={alt} />;
   }
 
   return (
     <div className="no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto rounded-lg">
       {withBlur.map(({ m, blur }, i) => (
         <div key={i} className="w-[85%] shrink-0 snap-center sm:w-[70%]">
-          <SingleImage media={m} blur={blur} priority={priority && i === 0} />
+          <SingleImage media={m} blur={blur} priority={priority && i === 0} alt={alt ? `${alt} (${i + 1} of ${withBlur.length})` : ""} />
         </div>
       ))}
     </div>
@@ -34,10 +42,12 @@ function SingleImage({
   media,
   blur,
   priority,
+  alt,
 }: {
   media: MediaItem;
   blur: string | null;
   priority: boolean;
+  alt: string;
 }) {
   const w = media.width ?? 1200;
   const h = media.height ?? 900;
@@ -45,7 +55,7 @@ function SingleImage({
     <div className="overflow-hidden rounded-lg bg-ink-sunken">
       <Image
         src={media.url!}
-        alt=""
+        alt={alt}
         width={w}
         height={h}
         priority={priority}

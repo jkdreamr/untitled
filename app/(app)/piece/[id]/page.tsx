@@ -79,7 +79,9 @@ export default async function PiecePage({ params }: { params: Promise<{ id: stri
       {/* media */}
       <div className="space-y-4">
         {card.medium === "sound" && track && <SoundBlock track={track} tall />}
-        {card.medium === "image" && <ImageRoll media={card.media} priority />}
+        {card.medium === "image" && (
+          <ImageRoll media={card.media} priority alt={card.caption ?? `${pieceTitle(card.title, card.sequence_no)} by @${card.artist.handle}`} />
+        )}
         {card.medium === "video" && <VideoBlock playbackId={card.mux_playback_id} title={pieceTitle(card.title, card.sequence_no)} aspect={aspect} />}
         {card.medium === "words" && card.body && <WordsBlock body={card.body} />}
         {card.medium !== "words" && card.body && <WordsBlock body={card.body} className="text-[1.15rem]" />}

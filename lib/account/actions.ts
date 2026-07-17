@@ -9,7 +9,16 @@ import { getSessionUser } from "@/lib/data/profiles";
 import { getMux } from "@/lib/mux/client";
 import { ALL_TAGS } from "@/lib/taxonomy";
 
-const linkSchema = z.object({ label: z.string().trim().max(40), url: z.string().trim().url().max(200) });
+const linkSchema = z.object({
+  label: z.string().trim().max(40),
+  // http(s) only — reject javascript:/data: and other schemes (stored-XSS via href)
+  url: z
+    .string()
+    .trim()
+    .max(200)
+    .url()
+    .refine((u) => /^https?:\/\//i.test(u), "links must start with http:// or https://"),
+});
 
 const profileSchema = z.object({
   display_name: z.string().trim().min(1).max(40),

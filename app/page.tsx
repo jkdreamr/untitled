@@ -39,16 +39,16 @@ export default async function LandingPage() {
         <main id="main">
           {/* hero */}
           <section className="mx-auto max-w-6xl px-6 pb-16 pt-20 sm:px-10 sm:pt-28">
-            <p className="meta meta-caps mb-8 text-bone-46 [animation:fade-in_.5s_ease-out_both]">
+            <p className="meta meta-caps mb-8 text-bone-46 [animation:fade-in_.3s_ease-out_both]">
               a product of NOVUM Labs
             </p>
             <div className="grid gap-10 lg:grid-cols-[1.4fr_1fr] lg:items-end">
-              <h1 className="display text-[clamp(3.2rem,9vw,7.5rem)] text-bone [animation:rise-in_.5s_var(--ease-out)_both]">
+              <h1 className="display text-[clamp(3.2rem,9vw,7.5rem)] text-bone [animation:rise-in_.3s_var(--ease-out)_both]">
                 post the take.
                 <br />
                 <span className="text-bone-46 italic">skip everything else.</span>
               </h1>
-              <div className="max-w-md [animation:rise-in_.5s_var(--ease-out)_.08s_both]">
+              <div className="max-w-md [animation:rise-in_.3s_var(--ease-out)_.08s_both]">
                 <p className="text-[1.05rem] leading-relaxed text-bone-64">
                   the raw thing itself — the voice memo, the one-take cover, the phone video at the
                   piano, the sketchbook page, the lyric fragment. no polishing, no captions to

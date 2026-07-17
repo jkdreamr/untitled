@@ -82,7 +82,7 @@ export function Waveform({
             className={cn(
               "min-h-[2px] flex-1 rounded-full transition-colors duration-75",
               played ? "bg-lime" : "bg-bone-32",
-              draw && "origin-bottom [animation:wave-grow_.4s_var(--ease-out)_both]",
+              draw && "origin-bottom [animation:wave-grow_.3s_var(--ease-out)_both]",
             )}
             style={{ height: `${Math.max(6, v * 100)}%`, animationDelay: draw ? `${i * 5}ms` : undefined }}
           />

@@ -14,16 +14,16 @@ export default function ScoutPage() {
     <>
       {/* hero */}
       <section className="mx-auto max-w-6xl px-6 pb-16 pt-20 sm:px-10 sm:pt-28">
-        <p className="meta meta-caps mb-8 text-lime [animation:fade-in_.5s_ease-out_both]">
+        <p className="meta meta-caps mb-8 text-lime [animation:fade-in_.3s_ease-out_both]">
           scout · early access
         </p>
         <div className="grid gap-10 lg:grid-cols-[1.35fr_1fr] lg:items-end">
-          <h1 className="display text-[clamp(2.8rem,8vw,6.5rem)] text-bone [animation:rise-in_.5s_var(--ease-out)_both]">
+          <h1 className="display text-[clamp(2.8rem,8vw,6.5rem)] text-bone [animation:rise-in_.3s_var(--ease-out)_both]">
             find the artist
             <br />
             before <span className="italic text-bone-46">everyone else.</span>
           </h1>
-          <div className="max-w-md [animation:rise-in_.5s_var(--ease-out)_.08s_both]">
+          <div className="max-w-md [animation:rise-in_.3s_var(--ease-out)_.08s_both]">
             <p className="text-[1.05rem] leading-relaxed text-bone-64">
               scout is talent search for labels, agencies, and studios — over a corpus of
               verified-human, raw work. the demo before the release, the sketchbook before the show.

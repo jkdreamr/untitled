@@ -63,7 +63,9 @@ export function PieceCard({
       {/* media */}
       <div className="space-y-4">
         {card.medium === "sound" && track && <SoundBlock track={track} />}
-        {card.medium === "image" && <ImageRoll media={card.media} priority={priority} />}
+        {card.medium === "image" && (
+          <ImageRoll media={card.media} priority={priority} alt={card.caption ?? `${label} by @${card.artist.handle}`} />
+        )}
         {card.medium === "video" && <VideoBlock playbackId={card.mux_playback_id} title={label} aspect={aspect} />}
         {card.medium === "words" && card.body && <WordsBlock body={card.body} clamp />}
         {/* pairings: lyric with its demo / photo */}
