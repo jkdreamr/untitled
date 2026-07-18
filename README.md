@@ -91,9 +91,12 @@ vercel                            # or import the repo in the Vercel dashboard
 
 Set the env vars above in the Vercel project. Two things wire up automatically:
 
-- `vercel.json` schedules a cron hitting `/api/enrichment/run` every 2 minutes;
-  Vercel adds the `Authorization: Bearer $CRON_SECRET` header when `CRON_SECRET`
-  is set, so no route is left open.
+- `vercel.json` schedules a cron hitting `/api/enrichment/run` daily (Vercel
+  **Hobby** allows one cron run per day; on **Pro** tighten it to `*/2 * * * *`
+  for near-real-time enrichment). Vercel adds the `Authorization: Bearer
+  $CRON_SECRET` header when `CRON_SECRET` is set, so no route is left open. Note
+  that tracks are FTS-searchable the instant they post (the insert trigger builds
+  the initial doc); the cron only drives async embeddings/transcription.
 - **Mux webhook**: point a Mux webhook at `https://<your-domain>/api/mux/webhook`
   (event `video.asset.ready`) and set `MUX_WEBHOOK_SECRET` to its signing secret.
 
