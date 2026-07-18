@@ -23,14 +23,14 @@ export function TrackLyrics({ card }: { card: PieceCard }) {
         <button
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
-          className="meta meta-caps flex items-center gap-2 text-bone-46 transition-colors hover:text-bone"
+          className="meta meta-caps flex items-center gap-2 text-bone-64 transition-colors hover:text-bone"
         >
           <span>{open ? "hide lyrics" : "show lyrics"}</span>
           <span className={cn("transition-transform duration-200", open && "rotate-90")}>›</span>
         </button>
         {open && (
           <div className="mt-3 [animation:veil-up_.24s_var(--ease-out)_both]">
-            <p className="meta meta-caps mb-2 text-bone-32">{sourceLabel}</p>
+            <p className="meta meta-caps mb-2 text-bone-52">{sourceLabel}</p>
             <div className="prose-words whitespace-pre-wrap rounded-lg bg-ink-sunken/40 p-6 font-serif text-[1.25rem] leading-relaxed text-bone-80 sm:p-8 sm:text-[1.4rem]">
               {card.lyrics}
             </div>

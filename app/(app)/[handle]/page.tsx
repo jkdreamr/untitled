@@ -107,12 +107,13 @@ export default async function ProfilePage({
       )}
 
       {/* discography filter (by track kind) */}
-      <nav className="mt-8 flex gap-1 border-b border-bone-10 pb-3">
+      <nav aria-label="filter by track kind" className="no-scrollbar mt-8 flex gap-1 overflow-x-auto border-b border-bone-10 pb-3">
         {KINDS.map((k) => (
           <Link
             key={k}
             href={k === "all" ? `/${profile.handle}` : `/${profile.handle}?kind=${k}`}
-            className={cn("rounded-full px-3 py-1.5 text-sm transition-colors", activeKind === k ? "text-bone" : "text-bone-46 hover:text-bone")}
+            aria-current={activeKind === k ? "page" : undefined}
+            className={cn("shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-sm transition-colors", activeKind === k ? "text-lime" : "text-bone-64 hover:text-bone")}
           >
             {k}
           </Link>
@@ -122,7 +123,7 @@ export default async function ProfilePage({
       {/* work */}
       <div className="mt-2">
         {cards.length === 0 ? (
-          <p className="py-16 text-center text-sm text-bone-32">
+          <p className="py-16 text-center text-sm text-bone-52">
             {profile.is_self ? "you haven't posted here yet. post the first take." : "nothing here yet."}
           </p>
         ) : (

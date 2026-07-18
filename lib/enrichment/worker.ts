@@ -115,21 +115,23 @@ async function download(admin: Admin, path: string): Promise<Uint8Array | null> 
 }
 
 async function rebuildDoc(admin: Admin, pieceId: string): Promise<void> {
-  const [{ data: piece }, { data: ps }] = await Promise.all([
-    admin.from("pieces").select("title,caption,lyrics,cover_of_title,cover_of_artist,tags").eq("id", pieceId).maybeSingle(),
-    admin.from("piece_search").select("description,transcript").eq("piece_id", pieceId).maybeSingle(),
-  ]);
+  const { data: piece } = await admin
+    .from("pieces")
+    .select("title,caption,lyrics,cover_of_title,cover_of_artist,tags")
+    .eq("id", pieceId)
+    .maybeSingle();
   if (!piece) return;
+  // Confirmed content only — the raw transcript never enters the client-queryable
+  // doc/fts (it stays in piece_search for owner review). Audio semantics come from
+  // the audio embedding, and confirmed lyrics rank weight A via lyrics_text.
   const doc = [
     piece.title, piece.caption, piece.lyrics,
     (piece.tags ?? []).join(" "),
-    ps?.description, ps?.transcript,
     piece.cover_of_title, piece.cover_of_artist,
   ]
     .filter(Boolean)
     .join(" ")
     .trim();
-  // Mirror confirmed lyrics for weight-A FTS; keep doc in sync with enrichment.
   await admin
     .from("piece_search")
     .update({ doc: doc || null, lyrics_text: piece.lyrics ?? null })

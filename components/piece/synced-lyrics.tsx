@@ -26,7 +26,11 @@ export function SyncedLyrics({
   className?: string;
 }) {
   const player = usePlayer();
+  // Pull the stable callbacks out so effects don't restart on every timeupdate
+  // (the player api object is recreated ~4x/sec as `time` ticks).
+  const { getTime, seekTo, play } = player;
   const isCurrent = player.isCurrent(pieceId);
+  const playing = player.playing;
   const synced = segments.length > 0;
   const [active, setActive] = useState(-1);
 
@@ -43,7 +47,7 @@ export function SyncedLyrics({
     let raf = 0;
     let last = -1;
     const tick = () => {
-      const t = player.getTime();
+      const t = getTime();
       let idx = -1;
       for (let i = 0; i < segments.length; i++) {
         if (segments[i]!.start <= t + 0.15) idx = i;
@@ -57,15 +61,15 @@ export function SyncedLyrics({
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [synced, isCurrent, segments, player]);
+  }, [synced, isCurrent, segments, getTime]);
 
   // Apply a queued seek once the tapped track has actually started.
   useEffect(() => {
-    if (isCurrent && player.playing && pendingSeek.current != null) {
-      player.seekTo(pendingSeek.current);
+    if (isCurrent && playing && pendingSeek.current != null) {
+      seekTo(pendingSeek.current);
       pendingSeek.current = null;
     }
-  }, [isCurrent, player.playing, player]);
+  }, [isCurrent, playing, seekTo]);
 
   // Center the active line within its own scroll container (never scroll the page).
   useEffect(() => {
@@ -82,10 +86,10 @@ export function SyncedLyrics({
     const seg = segments[i];
     if (!seg) return;
     if (isCurrent) {
-      player.seekTo(seg.start);
+      seekTo(seg.start);
     } else if (track) {
       pendingSeek.current = seg.start;
-      player.play(track);
+      play(track);
     }
   }
 

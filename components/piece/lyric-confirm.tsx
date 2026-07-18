@@ -106,7 +106,7 @@ export function LyricConfirm({ pieceId, pending }: { pieceId: string; pending: P
           </div>
 
           {droppedTiming > 0 && (
-            <p className="meta mt-3 text-bone-46">
+            <p className="meta mt-3 text-bone-52">
               {droppedTiming} line{droppedTiming > 1 ? "s" : ""} changed a lot — {droppedTiming > 1 ? "they'll" : "it'll"}{" "}
               stay in the lyrics but won&apos;t scroll in time.
             </p>
@@ -117,7 +117,7 @@ export function LyricConfirm({ pieceId, pending }: { pieceId: string; pending: P
             <Button variant="solid" size="sm" onClick={onConfirm} disabled={busy}>
               {busy ? "saving…" : "confirm lyrics"}
             </Button>
-            <button onClick={() => setOpen(false)} className="meta text-bone-46 hover:text-bone">
+            <button onClick={() => setOpen(false)} className="meta text-bone-64 hover:text-bone">
               not now
             </button>
           </div>

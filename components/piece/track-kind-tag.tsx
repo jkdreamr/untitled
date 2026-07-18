@@ -29,7 +29,7 @@ export function CoverOf({
 }) {
   if (!title && !artist) return null;
   return (
-    <p className={`meta text-bone-46 ${className ?? ""}`}>
+    <p className={`meta text-bone-52 ${className ?? ""}`}>
       {verb}{" "}
       {title && <span className="text-bone-64">{title}</span>}
       {title && artist ? " — " : ""}

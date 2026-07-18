@@ -171,7 +171,7 @@ export default async function PiecePage({ params }: { params: Promise<{ id: stri
       {/* sounds like */}
       {similar.length > 0 && (
         <section className="mt-10">
-          <h2 className="meta meta-caps mb-3 text-bone-46">sounds like</h2>
+          <h2 className="meta meta-caps mb-3 text-bone-52">sounds like</h2>
           <div className="space-y-1">
             {similar.map((c) => (
               <ResultCard key={c.id} card={c} />

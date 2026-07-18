@@ -136,7 +136,7 @@ export function SettingsForm({
       <Field label="what you do">
         <div className="flex flex-wrap gap-2">
           {ARTIST_ROLES.map((r) => (
-            <button key={r} onClick={() => toggleRole(r)} className={cn("rounded-full border px-3 py-1 font-mono text-[0.75rem] transition-colors", roles.includes(r) ? "border-lime bg-lime/10 text-lime" : "border-bone-16 text-bone-46 hover:text-bone")}>
+            <button key={r} onClick={() => toggleRole(r)} className={cn("rounded-full border px-3 py-1 font-mono text-[0.75rem] transition-colors", roles.includes(r) ? "border-lime bg-lime/10 text-lime" : "border-bone-16 text-bone-64 hover:text-bone")}>
               {r}
             </button>
           ))}
@@ -151,7 +151,7 @@ export function SettingsForm({
       <Field label="open to">
         <div className="flex flex-wrap gap-2">
           {OPEN_TO.map((o) => (
-            <button key={o} onClick={() => toggleOpen(o)} className={cn("rounded-full border px-3 py-1 font-mono text-[0.75rem] transition-colors", openTo.includes(o) ? "border-lime bg-lime/10 text-lime" : "border-bone-16 text-bone-46 hover:text-bone")}>
+            <button key={o} onClick={() => toggleOpen(o)} className={cn("rounded-full border px-3 py-1 font-mono text-[0.75rem] transition-colors", openTo.includes(o) ? "border-lime bg-lime/10 text-lime" : "border-bone-16 text-bone-64 hover:text-bone")}>
               {o}
             </button>
           ))}
@@ -165,7 +165,7 @@ export function SettingsForm({
               <p className="meta meta-caps mb-2 text-bone-32">{g.label}</p>
               <div className="flex flex-wrap gap-2">
                 {g.tags.map((t) => (
-                  <button key={t} onClick={() => toggleInterest(t)} className={cn("rounded-full border px-3 py-1 font-mono text-[0.75rem] transition-colors", interests.includes(t) ? "border-lime bg-lime/10 text-lime" : "border-bone-16 text-bone-46 hover:text-bone")}>
+                  <button key={t} onClick={() => toggleInterest(t)} className={cn("rounded-full border px-3 py-1 font-mono text-[0.75rem] transition-colors", interests.includes(t) ? "border-lime bg-lime/10 text-lime" : "border-bone-16 text-bone-64 hover:text-bone")}>
                     {t}
                   </button>
                 ))}

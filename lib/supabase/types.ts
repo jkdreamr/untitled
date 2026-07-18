@@ -737,11 +737,9 @@ export type Database = {
           p_caption: string
           p_cover_artist: string
           p_cover_title: string
-          p_desc: string
           p_lyrics: string
           p_tags: string[]
           p_title: string
-          p_transcript: string
         }
         Returns: string
       }

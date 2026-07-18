@@ -36,6 +36,7 @@ export function SearchView({
   const [results, setResults] = useState<PieceCard[]>(initialResults);
   const [artists, setArtists] = useState<ArtistResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
   const [touched, setTouched] = useState(initialQuery.length > 0 || initialTags.length > 0);
 
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -65,13 +66,16 @@ export function SearchView({
       if (filters.openTo.size) params.set("open_to", [...filters.openTo].join(","));
       if (t.length) params.set("tags", t.join(","));
       const res = await fetch(`/api/search?${params.toString()}`, { signal: controller.signal });
+      if (!res.ok) throw new Error("search failed");
       const json = (await res.json()) as { results: PieceCard[]; artists: ArtistResult[] };
       setResults(json.results ?? []);
       setArtists(json.artists ?? []);
+      setError(false);
     } catch (e) {
       if ((e as Error).name !== "AbortError") {
         setResults([]);
         setArtists([]);
+        setError(true);
       }
     } finally {
       if (!controller.signal.aborted) setLoading(false);
@@ -168,7 +172,7 @@ export function SearchView({
         {tags.length > 0 && (
           <FilterRow label="tags">
             {tags.map((t) => (
-              <button key={t} onClick={() => setTags(tags.filter((x) => x !== t))} className="rounded-full border border-lime bg-lime/10 px-3 py-1 font-mono text-[0.75rem] text-lime">
+              <button key={t} onClick={() => setTags(tags.filter((x) => x !== t))} aria-label={`remove tag ${t}`} className="rounded-full border border-lime bg-lime/10 px-3 py-1 font-mono text-[0.75rem] text-lime">
                 {t} ×
               </button>
             ))}
@@ -177,16 +181,20 @@ export function SearchView({
       </div>
 
       <div className="mt-6 space-y-8">
-        {!nothing ? (
+        {error && !loading ? (
+          <p role="alert" className="py-16 text-center text-sm text-bone-64">
+            couldn&apos;t reach search — check your connection and try again.
+          </p>
+        ) : !nothing ? (
           artistsFirst ? [artistsSection, tracksSection] : [tracksSection, artistsSection]
         ) : touched && !loading ? (
-          <p className="py-16 text-center text-sm text-bone-32">
+          <p className="py-16 text-center text-sm text-bone-52">
             nothing matched — yet. try fewer words, or a feeling.
           </p>
         ) : !touched ? (
           <div className="py-16 text-center">
             <p className="font-serif text-2xl text-bone-64">search the whole room.</p>
-            <p className="mt-2 text-sm text-bone-32">
+            <p className="mt-2 text-sm text-bone-52">
               a line of lyrics, a mood, a role. it finds the track — and the musician behind it.
             </p>
           </div>
@@ -198,8 +206,8 @@ export function SearchView({
 
 function FilterRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="meta meta-caps w-16 shrink-0 text-bone-32">{label}</span>
+    <div className="flex flex-wrap items-center gap-2" role="group" aria-label={label}>
+      <span className="meta meta-caps w-16 shrink-0 text-bone-64">{label}</span>
       {children}
     </div>
   );
@@ -212,7 +220,7 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
       aria-pressed={on}
       className={cn(
         "rounded-full border px-3 py-1 font-mono text-[0.75rem] transition-colors",
-        on ? "border-lime bg-lime/10 text-lime" : "border-bone-16 text-bone-46 hover:text-bone",
+        on ? "border-lime bg-lime/10 text-lime" : "border-bone-16 text-bone-64 hover:text-bone",
       )}
     >
       {children}
