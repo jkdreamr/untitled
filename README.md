@@ -186,21 +186,24 @@ dimensions (CLS-safe); one global `<audio>` with `preload="none"`; Mux
 poster-first; keyset pagination everywhere; HNSW on embeddings; composite
 indexes on every feed/profile/wander path.
 
-### `EXPLAIN ANALYZE` — the five hottest queries
+### `EXPLAIN ANALYZE` — the hottest queries
 
-Measured on a 600-piece / 8-artist dataset (Supabase, `us-east-1`), stats
-freshly `ANALYZE`d. Server-side execution time:
+Measured on synthetic datasets (Supabase, `us-east-1`), stats freshly `ANALYZE`d.
+Server-side execution time (total, including per-card jsonb assembly):
 
-| Query | Plan | Exec time |
+| Query | Notes | Exec time |
 | --- | --- | --- |
 | Following feed (keyset) | `Index Scan using pieces_feed_idx` | **0.53 ms** |
 | Profile grid (keyset) | `pieces_feed_idx` + memoized profile join | **0.97 ms** |
-| Search — FTS path | GIN `piece_search_fts_idx` (seq-scan here only because the synthetic docs are identical → 100% selectivity) | **4.5 ms** |
+| Track search — FTS + RRF + lyric_hit (300 tracks, 24 cards) | weighted GIN `piece_search_fts_idx`, fused + assembled | **22.7 ms** |
+| Talent search — `search_artists` (60 musicians) | trigram identity match + role/openness/genre filters | **5.6 ms** |
 | Wander candidate scan | `Index Scan using pieces_visibility_idx` | **0.53 ms** |
 | Feed card assembly (20 cards via `piece_card_json`) | 1 index scan + per-card jsonb build | **19.3 ms** (~1 ms/card) |
 
-Search server-side p95 (FTS + fuse + assemble) lands well under the 250 ms
-target; the vector path adds an HNSW scan of similar cost when embeddings exist.
+Both search paths land far under the 250 ms p95 target; the vector arm adds an
+HNSW scan of similar cost when embeddings exist. The synced-lyrics view follows
+the playhead with a single `requestAnimationFrame` loop that only re-renders when
+the active line changes — no per-frame React state — so it stays jank-free.
 
 Budget targets (verify with Lighthouse on landing / feed / piece): LCP < 1.5s,
 INP < 200ms, CLS < 0.05, Lighthouse ≥ 90 performance & accessibility.

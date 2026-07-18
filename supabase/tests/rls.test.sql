@@ -12,7 +12,7 @@
 -- ============================================================================
 
 begin;
-select plan(19);
+select plan(22);
 
 -- ---- fixtures (as the migration/superuser role) -------------------------
 -- three auth users: A (author), B (other), Q (quiet-mode author)
@@ -118,6 +118,26 @@ select throws_ok(
 select throws_ok(
   $$ update profiles set role = 'admin' where id = '22222222-2222-2222-2222-222222222222' $$,
   '42501', null, 'authenticated CANNOT escalate their own role (column not granted)');
+
+-- lyric intelligence: the raw transcription is invisible to a non-owner
+select is(
+  get_pending_transcription('aaaaaaaa-0000-0000-0000-000000000001') is null,
+  true, 'raw transcription is hidden from a non-owner');
+
+-- and a non-owner cannot confirm lyrics onto someone else's track
+select throws_ok(
+  $$ select confirm_lyrics('aaaaaaaa-0000-0000-0000-000000000001', 'hijacked lyrics', '[]'::jsonb) $$,
+  null, null, 'user B CANNOT confirm lyrics on user A''s track');
+
+reset role;
+
+-- ================= user A (owner) may review their transcription =================
+set local request.jwt.claims to '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+set local role authenticated;
+
+select is(
+  get_pending_transcription('aaaaaaaa-0000-0000-0000-000000000001') is not null,
+  true, 'the track owner CAN see the raw transcription to confirm it');
 
 reset role;
 
