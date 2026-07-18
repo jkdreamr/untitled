@@ -52,6 +52,11 @@ export function ResultCard({ card }: { card: PieceCard }) {
           <span className="meta-caps">{card.medium === "video" ? "video" : "audio"}</span>
           <TrackKindTag kind={card.track_kind} />
           <span className="shrink-0">· {formatPieceDate(card.published_at)}</span>
+          {card.lyric_hit ? (
+            <span className="shrink-0 rounded-full border border-lime/30 px-1.5 text-[0.65rem] text-lime">lyric</span>
+          ) : card.semantic ? (
+            <span className="shrink-0 rounded-full border border-bone-16 px-1.5 text-[0.65rem] text-bone-46">by sound</span>
+          ) : null}
         </p>
         {card.lyric_hit && card.lyrics ? (
           <p className="mt-1 line-clamp-1 font-serif text-sm text-lime/80">“{card.lyrics}”</p>

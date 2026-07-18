@@ -36,6 +36,10 @@ interface PlayerApi {
   next: () => void;
   prev: () => void;
   seekRatio: (ratio: number) => void;
+  /** Seek to an absolute time in seconds (used by tap-to-seek lyric lines). */
+  seekTo: (seconds: number) => void;
+  /** Live currentTime, read from the audio element — for rAF loops (no state churn). */
+  getTime: () => number;
   stop: () => void;
 }
 
@@ -165,6 +169,15 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     [current],
   );
 
+  const seekTo = useCallback((seconds: number) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.currentTime = Math.max(0, seconds);
+    if (audio.paused) audio.play().catch(() => {});
+  }, []);
+
+  const getTime = useCallback(() => audioRef.current?.currentTime ?? 0, []);
+
   const stop = useCallback(() => {
     const audio = audioRef.current;
     if (audio) {
@@ -198,9 +211,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       next,
       prev,
       seekRatio,
+      seekTo,
+      getTime,
       stop,
     }),
-    [current, queue, playing, time, dur, progress, isCurrent, play, playQueue, toggle, next, prev, seekRatio, stop],
+    [current, queue, playing, time, dur, progress, isCurrent, play, playQueue, toggle, next, prev, seekRatio, seekTo, getTime, stop],
   );
 
   return (

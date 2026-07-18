@@ -746,6 +746,10 @@ export type Database = {
         Returns: string
       }
       can_view_piece: { Args: { p_id: string }; Returns: boolean }
+      confirm_lyrics: {
+        Args: { p_id: string; p_lyrics: string; p_segments: Json }
+        Returns: boolean
+      }
       consume_rate_limit: {
         Args: { p_action: string; p_max: number; p_window_seconds: number }
         Returns: boolean
@@ -759,6 +763,7 @@ export type Database = {
         }[]
       }
       get_my_dashboard: { Args: never; Returns: Json }
+      get_pending_transcription: { Args: { p_id: string }; Returns: Json }
       get_piece: { Args: { p_id: string }; Returns: Json }
       get_piece_comments: {
         Args: { p_id: string; p_limit?: number }
@@ -815,6 +820,8 @@ export type Database = {
       }
       search_pieces: {
         Args: {
+          p_has_vocals?: boolean
+          p_kinds?: Database["public"]["Enums"]["track_kind"][]
           p_limit?: number
           p_media?: Database["public"]["Enums"]["medium"][]
           p_query?: string
@@ -824,7 +831,9 @@ export type Database = {
         }
         Returns: {
           card: Json
+          lyric_hit: boolean
           score: number
+          semantic: boolean
         }[]
       }
       storage_media_piece_id: { Args: { object_name: string }; Returns: string }

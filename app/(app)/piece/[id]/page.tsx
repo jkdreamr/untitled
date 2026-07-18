@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { Avatar } from "@/components/ui/avatar";
 import { SoundBlock } from "@/components/piece/sound-block";
 import { VideoBlock } from "@/components/piece/video-block";
-import { LyricsBlock } from "@/components/piece/lyrics-block";
+import { TrackLyrics } from "@/components/piece/track-lyrics";
+import { LyricConfirm } from "@/components/piece/lyric-confirm";
 import { TrackKindTag, CoverOf } from "@/components/piece/track-kind-tag";
 import { ReactionBar } from "@/components/piece/reaction-bar";
 import { CollectButton } from "@/components/piece/collect-button";
@@ -14,6 +15,7 @@ import { CommentSection } from "@/components/piece/comment-section";
 import { ReportDialog } from "@/components/piece/report-dialog";
 import { ViewPing } from "@/components/piece/view-ping";
 import { getPiece, getPieceComments, getPieceReactions, getPiecesAfter } from "@/lib/data/pieces";
+import { fetchPendingTranscription } from "@/lib/lyrics/actions";
 import { getSessionUser, getCurrentProfile } from "@/lib/data/profiles";
 import { pieceTitle, formatPieceDate, formatDuration } from "@/lib/utils";
 import type { PlayerTrack } from "@/components/player/player-context";
@@ -44,6 +46,8 @@ export default async function PiecePage({ params }: { params: Promise<{ id: stri
     getCurrentProfile(),
   ]);
   const authed = !!user;
+  // Owner-only: is there a transcription waiting to be reviewed?
+  const pending = card.viewer.is_owner ? await fetchPendingTranscription(id) : null;
 
   const audio = card.media.find((m) => m.kind === "audio");
   const track: PlayerTrack | null = audio?.url
@@ -81,7 +85,6 @@ export default async function PiecePage({ params }: { params: Promise<{ id: stri
       <div className="space-y-4">
         {card.medium === "sound" && track && <SoundBlock track={track} tall />}
         {card.medium === "video" && <VideoBlock playbackId={card.mux_playback_id} title={pieceTitle(card.title, card.sequence_no)} aspect={aspect} priority />}
-        {card.lyrics && <LyricsBlock lyrics={card.lyrics} className="text-[1.2rem]" />}
       </div>
 
       {/* title + meta */}
@@ -127,6 +130,10 @@ export default async function PiecePage({ params }: { params: Promise<{ id: stri
           ))}
         </div>
       )}
+
+      {/* lyrics — synced for audio, a toggle for video; owner reviews transcription first */}
+      {pending && <LyricConfirm pieceId={card.id} pending={pending} />}
+      <TrackLyrics card={card} />
 
       {/* actions */}
       <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-y border-bone-10 py-5">

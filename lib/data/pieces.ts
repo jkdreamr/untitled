@@ -3,7 +3,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { parseCard, attachSignedUrls, attachSignedUrlsOne } from "@/lib/data/cards";
 import { embedQuery } from "@/lib/embeddings";
-import type { PieceCard, PieceComment, Cursor, Medium, WanderItem, ReactionKind } from "@/lib/types";
+import type { PieceCard, PieceComment, Cursor, Medium, TrackKind, WanderItem, ReactionKind } from "@/lib/types";
 import type { Json } from "@/lib/supabase/types";
 
 export interface FeedPage {
@@ -108,7 +108,7 @@ export interface SearchResult {
 
 export async function searchPieces(
   query: string,
-  opts: { media?: Medium[]; tags?: string[]; limit?: number } = {},
+  opts: { media?: Medium[]; kinds?: TrackKind[]; hasVocals?: boolean; tags?: string[]; limit?: number } = {},
 ): Promise<SearchResult> {
   const supabase = await createClient();
   const trimmed = query.trim();
@@ -120,11 +120,20 @@ export async function searchPieces(
     p_query_emb: emb?.dim === 1536 ? emb.literal : undefined,
     p_query_emb_small: emb?.dim === 384 ? emb.literal : undefined,
     p_media: opts.media && opts.media.length ? opts.media : undefined,
+    p_kinds: opts.kinds && opts.kinds.length ? opts.kinds : undefined,
+    p_has_vocals: typeof opts.hasVocals === "boolean" ? opts.hasVocals : undefined,
     p_tags: opts.tags && opts.tags.length ? opts.tags : undefined,
     p_limit: opts.limit ?? 24,
   });
 
-  const cards = (data ?? []).map((r) => parseCard(r.card)).filter((c): c is PieceCard => !!c);
+  const cards: PieceCard[] = [];
+  for (const r of data ?? []) {
+    const c = parseCard(r.card);
+    if (!c) continue;
+    c.lyric_hit = r.lyric_hit ?? false;
+    c.semantic = r.semantic ?? false;
+    cards.push(c);
+  }
   await attachSignedUrls(supabase, cards);
   return { cards };
 }
