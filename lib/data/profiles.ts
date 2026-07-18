@@ -4,6 +4,7 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { signOne } from "@/lib/data/cards";
 import { getPiece } from "@/lib/data/pieces";
+import { hasSupabasePublicEnv } from "@/lib/env";
 import type { Tables } from "@/lib/supabase/types";
 import type { PieceCard } from "@/lib/types";
 import type { User } from "@supabase/supabase-js";
@@ -38,6 +39,8 @@ export interface PublicProfile {
 
 /** The authenticated auth user (verified against Supabase Auth). Cached per request. */
 export const getSessionUser = cache(async (): Promise<User | null> => {
+  // Not configured yet → treat everyone as a guest (no network call, no throw).
+  if (!hasSupabasePublicEnv()) return null;
   const supabase = await createClient();
   const {
     data: { user },

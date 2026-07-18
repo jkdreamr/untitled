@@ -16,14 +16,12 @@ export function hasSupabasePublicEnv(): boolean {
 }
 
 /**
- * Throw a clear, actionable error when Supabase public env is missing.
- * Called lazily by client factories so `next build` never crashes on missing env.
+ * Effective client credentials. When the real env isn't set yet, these are
+ * syntactically-valid placeholders so client construction never throws — the
+ * app builds, deploys, and can be browsed as a guest. Requests against the
+ * placeholder fail soft (the data layer already treats a null/error result as
+ * "no data" and renders empty states), and everything lights up the moment the
+ * real NEXT_PUBLIC_SUPABASE_* vars are set and the app is redeployed.
  */
-export function assertSupabasePublicEnv() {
-  if (!hasSupabasePublicEnv()) {
-    throw new Error(
-      "Missing NEXT_PUBLIC_SUPABASE_URL and/or NEXT_PUBLIC_SUPABASE_ANON_KEY. " +
-        "Copy .env.example to .env.local and fill them in (see README).",
-    );
-  }
-}
+export const EFFECTIVE_SUPABASE_URL = PUBLIC_ENV.SUPABASE_URL || "https://placeholder.supabase.co";
+export const EFFECTIVE_SUPABASE_ANON_KEY = PUBLIC_ENV.SUPABASE_ANON_KEY || "public-anon-key-placeholder";

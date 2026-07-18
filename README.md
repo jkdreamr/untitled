@@ -25,8 +25,12 @@ musician (by sound, by words, by role, by openness to work).
 - Search: **Gemini Embedding 2** (unified multimodal) with a **gte-small** edge
   fallback, fused with Postgres FTS
 
-The app **runs with only the two public Supabase variables set.** Every other
-key unlocks one capability and degrades gracefully when absent (no Gemini →
+The app **runs with only the two public Supabase variables set** — and it even
+**builds and deploys with _none_ set**, degrading to a read-only guest shell
+(landing + empty states) so you can ship first and wire up Supabase after. It
+lights up the moment you set the two `NEXT_PUBLIC_SUPABASE_*` vars and redeploy
+(they're inlined at build time, so a redeploy is required). Every other key
+unlocks one capability and degrades gracefully when absent (no Gemini →
 gte-small → FTS; no Mux → video posting hidden; no Groq → lyrics stay as pasted,
 no auto-transcription; either way tracks stay FTS-searchable).
 
