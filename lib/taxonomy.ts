@@ -1,98 +1,93 @@
-import type { Medium } from "@/lib/types";
-
 /**
- * The curated interest taxonomy (~60 tags across the four media + mood).
- * Used at onboarding (pick 3+), for tag confirmation at upload, and as a
- * discovery signal. Lowercase, hyphenated — these ARE the tag strings.
+ * The curated music taxonomy (~55 tags across four groups: genre, voice &
+ * instrument, mood, and context). Used at onboarding (pick 3+), for tag
+ * confirmation at upload, and as a discovery signal. Lowercase, hyphenated —
+ * these ARE the tag strings.
  */
 export interface TagGroup {
   key: string;
   label: string;
-  medium: Medium | "mood";
   tags: string[];
 }
 
 export const TAXONOMY: readonly TagGroup[] = [
   {
-    key: "sound",
-    label: "sound",
-    medium: "sound",
+    key: "genre",
+    label: "genre",
     tags: [
-      "bedroom-pop",
-      "acoustic-cover",
-      "demo",
-      "voice-memo",
-      "field-recording",
+      "hip-hop",
       "rap",
-      "beat",
-      "ambient",
+      "r-and-b",
+      "soul",
+      "pop",
+      "indie",
+      "rock",
       "folk",
-      "lo-fi",
       "singer-songwriter",
+      "bedroom-pop",
+      "lo-fi",
       "jazz",
-      "experimental",
-      "a-cappella",
-      "instrumental",
+      "blues",
+      "country",
+      "electronic",
+      "ambient",
+      "afrobeats",
+      "gospel",
+    ],
+  },
+  {
+    key: "voice",
+    label: "voice & instrument",
+    tags: [
+      "vocals",
+      "falsetto",
+      "harmony",
+      "rapping",
       "spoken-word",
+      "a-cappella",
+      "guitar",
+      "piano",
+      "keys",
+      "bass",
+      "drums",
+      "strings",
+      "sax",
+      "beat",
+      "instrumental",
     ],
-  },
-  {
-    key: "image",
-    label: "image",
-    medium: "image",
-    tags: [
-      "film-photo",
-      "digital-photo",
-      "ink",
-      "figure-drawing",
-      "watercolor",
-      "oil-painting",
-      "sketch",
-      "collage",
-      "portrait",
-      "landscape",
-      "street-photo",
-      "illustration",
-      "printmaking",
-      "still-life",
-      "mixed-media",
-    ],
-  },
-  {
-    key: "video",
-    label: "video",
-    medium: "video",
-    tags: [
-      "live-take",
-      "performance",
-      "dance",
-      "hand-drawn-animation",
-      "short-film",
-      "process",
-      "one-take",
-    ],
-  },
-  {
-    key: "words",
-    label: "words",
-    medium: "words",
-    tags: ["haiku", "poem", "lyrics", "fragment", "prose", "short-story", "essay", "letter"],
   },
   {
     key: "mood",
-    label: "feeling",
-    medium: "mood",
+    label: "mood",
     tags: [
       "melancholy",
       "warm",
       "nocturnal",
-      "minimal",
       "raw",
       "tender",
       "restless",
       "hopeful",
       "nostalgic",
       "playful",
+      "moody",
+      "euphoric",
+      "heartbroken",
+    ],
+  },
+  {
+    key: "context",
+    label: "context",
+    tags: [
+      "demo",
+      "voice-memo",
+      "live-take",
+      "one-take",
+      "home-recording",
+      "unfinished",
+      "snippet",
+      "acoustic",
+      "remix",
+      "session",
     ],
   },
 ] as const;
@@ -128,8 +123,16 @@ export function normalizeTags(input: string[]): string[] {
   return out;
 }
 
-/** Suggested starter tags for a given medium (used before enrichment lands). */
-export function suggestedTagsForMedium(medium: Medium): string[] {
-  const group = TAXONOMY.find((g) => g.medium === medium);
-  return group ? group.tags.slice(0, 6) : [];
+/** A calm starter set shown in the composer before enrichment suggests more. */
+const STARTER_TAGS = [
+  "demo",
+  "one-take",
+  "acoustic",
+  "lo-fi",
+  "vocals",
+  "raw",
+] as const;
+
+export function suggestedStarterTags(): string[] {
+  return [...STARTER_TAGS];
 }

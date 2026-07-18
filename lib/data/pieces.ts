@@ -3,7 +3,8 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { parseCard, attachSignedUrls, attachSignedUrlsOne } from "@/lib/data/cards";
 import { embedQuery } from "@/lib/embeddings";
-import type { PieceCard, PieceComment, Cursor, Medium, WanderItem, ReactionKind } from "@/lib/types";
+import { signOne } from "@/lib/data/cards";
+import type { PieceCard, PieceComment, Cursor, Medium, TrackKind, WanderItem, ArtistResult, ReactionKind } from "@/lib/types";
 import type { Json } from "@/lib/supabase/types";
 
 export interface FeedPage {
@@ -42,14 +43,14 @@ export async function getFollowingFeed(cursor?: Cursor, limit = 20): Promise<Fee
 
 export async function getProfilePieces(
   handle: string,
-  medium: Medium | null,
+  kind: TrackKind | null,
   cursor?: Cursor,
   limit = 24,
 ): Promise<FeedPage> {
   const supabase = await createClient();
   const { data } = await supabase.rpc("get_profile_pieces", {
     p_handle: handle,
-    p_medium: medium ?? undefined,
+    p_kind: kind ?? undefined,
     p_cursor_ts: cursor?.ts,
     p_cursor_id: cursor?.id,
     p_limit: limit,
@@ -106,9 +107,57 @@ export interface SearchResult {
   cards: PieceCard[];
 }
 
+/** Talent search: musicians ranked by name/voice-note match + role/openness/genre. */
+export async function searchArtists(
+  query: string,
+  opts: { roles?: string[]; openTo?: string[]; tags?: string[]; limit?: number } = {},
+): Promise<ArtistResult[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("search_artists", {
+    p_query: query.trim(),
+    p_roles: opts.roles && opts.roles.length ? opts.roles : undefined,
+    p_open_to: opts.openTo && opts.openTo.length ? opts.openTo : undefined,
+    p_tags: opts.tags && opts.tags.length ? opts.tags : undefined,
+    p_limit: opts.limit ?? 12,
+  });
+  const artists: ArtistResult[] = [];
+  for (const row of data ?? []) {
+    const a = row.artist as Record<string, unknown> | null;
+    if (!a) continue;
+    artists.push({
+      id: String(a.id),
+      handle: String(a.handle),
+      display_name: String(a.display_name),
+      avatar_path: (a.avatar_path as string) ?? null,
+      avatar_url: null,
+      bio: (a.bio as string) ?? null,
+      voice_note: (a.voice_note as string) ?? null,
+      roles: Array.isArray(a.roles) ? (a.roles as string[]) : [],
+      open_to: Array.isArray(a.open_to) ? (a.open_to as string[]) : [],
+      follower_count: Number(a.follower_count ?? 0),
+      track_count: Number(a.track_count ?? 0),
+      top_tags: Array.isArray(a.top_tags) ? (a.top_tags as string[]) : [],
+    });
+  }
+  await Promise.all(
+    artists.map(async (a) => {
+      a.avatar_url = await signOne(supabase, "avatars", a.avatar_path);
+    }),
+  );
+  return artists;
+}
+
+/** "sounds like" — nightly neighbors, then shared-tag fallback. */
+export async function getSimilarTracks(pieceId: string, limit = 6): Promise<PieceCard[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("get_similar_tracks", { p_id: pieceId, p_limit: limit });
+  const cards = (data ?? []).map((r) => parseCard(r.card)).filter((c): c is PieceCard => !!c);
+  return attachSignedUrls(supabase, cards);
+}
+
 export async function searchPieces(
   query: string,
-  opts: { media?: Medium[]; tags?: string[]; limit?: number } = {},
+  opts: { media?: Medium[]; kinds?: TrackKind[]; hasVocals?: boolean; tags?: string[]; limit?: number } = {},
 ): Promise<SearchResult> {
   const supabase = await createClient();
   const trimmed = query.trim();
@@ -120,11 +169,20 @@ export async function searchPieces(
     p_query_emb: emb?.dim === 1536 ? emb.literal : undefined,
     p_query_emb_small: emb?.dim === 384 ? emb.literal : undefined,
     p_media: opts.media && opts.media.length ? opts.media : undefined,
+    p_kinds: opts.kinds && opts.kinds.length ? opts.kinds : undefined,
+    p_has_vocals: typeof opts.hasVocals === "boolean" ? opts.hasVocals : undefined,
     p_tags: opts.tags && opts.tags.length ? opts.tags : undefined,
     p_limit: opts.limit ?? 24,
   });
 
-  const cards = (data ?? []).map((r) => parseCard(r.card)).filter((c): c is PieceCard => !!c);
+  const cards: PieceCard[] = [];
+  for (const r of data ?? []) {
+    const c = parseCard(r.card);
+    if (!c) continue;
+    c.lyric_hit = r.lyric_hit ?? false;
+    c.semantic = r.semantic ?? false;
+    cards.push(c);
+  }
   await attachSignedUrls(supabase, cards);
   return { cards };
 }
@@ -144,7 +202,7 @@ export async function getWander(limit = 30, exclude: string[] = []): Promise<Wan
     .map((r) => {
       const card = parseCard(r.card);
       return card
-        ? { card, score: r.score, is_exploration: r.is_exploration, medium: r.medium, artist_id: r.artist_id }
+        ? { card, score: r.score, is_exploration: r.is_exploration, track_kind: r.track_kind, artist_id: r.artist_id }
         : null;
     })
     .filter((x): x is WanderItem => !!x);
@@ -165,12 +223,13 @@ function diversify(pool: WanderItem[], limit: number): WanderItem[] {
   const result: WanderItem[] = [];
   const used = new Set<string>();
 
+  // never >2 consecutive of the same track kind or the same artist
   const canPlace = (item: WanderItem): boolean => {
     const n = result.length;
     if (n >= 2) {
       const a = result[n - 1];
       const b = result[n - 2];
-      if (a && b && a.medium === item.medium && b.medium === item.medium) return false;
+      if (a && b && a.track_kind === item.track_kind && b.track_kind === item.track_kind) return false;
       if (a && b && a.artist_id === item.artist_id && b.artist_id === item.artist_id) return false;
     }
     return true;
@@ -189,14 +248,28 @@ function diversify(pool: WanderItem[], limit: number): WanderItem[] {
     return false;
   };
 
+  // last resort: place the best remaining item even if it breaks the streak rule,
+  // so a catalog that's mostly one kind still fills the feed instead of truncating.
+  const takeAny = (): boolean => {
+    for (const item of pool) {
+      if (!used.has(item.card.id)) {
+        result.push(item);
+        used.add(item.card.id);
+        return true;
+      }
+    }
+    return false;
+  };
+
   let exploreUsed = 0;
   while (result.length < limit) {
     const wantExplore = exploreUsed < targetExplore && result.length % 5 === 4;
     const primary = wantExplore ? explore : main;
     const secondary = wantExplore ? main : explore;
     const before = result.length;
-    if (!take(primary)) take(secondary);
-    if (result.length === before) break; // pool exhausted or all blocked
+    if (!take(primary) && !take(secondary)) {
+      if (!takeAny()) break; // pool genuinely exhausted
+    }
     if (wantExplore && result.length > before) exploreUsed++;
   }
   return result;

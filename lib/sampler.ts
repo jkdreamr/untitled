@@ -1,12 +1,12 @@
-import type { Medium } from "@/lib/types";
+import type { TrackMedium } from "@/lib/types";
 
 /**
  * A curated, obviously-illustrative sampler for the logged-out landing strip.
  * Used only as a graceful fallback when the real seeded feed is empty, so the
- * page always feels alive. Fictional artists, no fabricated metrics anywhere.
+ * page always feels alive. Fictional musicians, no fabricated metrics anywhere.
  */
 export interface PreviewItem {
-  medium: Medium;
+  medium: TrackMedium;
   title: string | null;
   sequenceNo: number;
   artistName: string;
@@ -15,10 +15,10 @@ export interface PreviewItem {
   tags: string[];
   peaks?: number[];
   duration?: number;
-  imageSvg?: string; // inline data URI (sampler)
+  imageSvg?: string; // inline data URI (sampler video poster)
   imageUrl?: string; // signed URL / mux thumbnail (real pieces)
-  words?: string;
-  aspect?: number; // w/h for image/video
+  lyrics?: string; // a short lyric teaser
+  aspect?: number; // w/h for video
 }
 
 /** Deterministic peaks (seeded) so server/client render identically. */
@@ -59,27 +59,31 @@ export const SAMPLER: readonly PreviewItem[] = [
     tags: ["bedroom-pop", "demo", "nocturnal"],
     peaks: peaks(7),
     duration: 138,
+    lyrics: "if the kitchen light is still on\ni'm still awake, still humming this",
   },
   {
-    medium: "image",
-    title: "morning, unmade",
+    medium: "video",
+    title: "at the piano, 2am",
     sequenceNo: 4,
     artistName: "Ilse Kováč",
-    artistHandle: "ilse_draws",
+    artistHandle: "ilse_keys",
     date: "2026-07-02",
-    tags: ["ink", "figure-drawing"],
+    tags: ["singer-songwriter", "live-take", "tender"],
     imageSvg: inkWash("#2b2a26", "#0c0c0b", 3),
-    aspect: 0.8,
+    aspect: 1.4,
+    duration: 112,
   },
   {
-    medium: "words",
+    medium: "sound",
     title: null,
     sequenceNo: 47,
     artistName: "Tomás Rivera",
-    artistHandle: "tomas_writes",
+    artistHandle: "tomas_raps",
     date: "2026-07-05",
-    tags: ["fragment", "tender"],
-    words: "i kept the receipt from the night\nwe didn't say anything —\nproof we were both there,\nboth quiet, both staying.",
+    tags: ["hip-hop", "freestyle", "one-take"],
+    peaks: peaks(51),
+    duration: 89,
+    lyrics: "kept the receipt from the night we said nothing —\nproof we were both there, both staying",
   },
   {
     medium: "sound",
@@ -88,20 +92,21 @@ export const SAMPLER: readonly PreviewItem[] = [
     artistName: "Junko Vance",
     artistHandle: "junko",
     date: "2026-07-08",
-    tags: ["acoustic-cover", "raw"],
+    tags: ["acoustic", "raw", "vocals"],
     peaks: peaks(21),
     duration: 201,
+    lyrics: "look at the stars, look how they shine for you",
   },
   {
-    medium: "image",
+    medium: "sound",
     title: null,
     sequenceNo: 19,
     artistName: "Bea Sorokin",
-    artistHandle: "film_bea",
+    artistHandle: "bea_beats",
     date: "2026-07-10",
-    tags: ["film-photo", "warm"],
-    imageSvg: inkWash("#3a2f24", "#0b0a09", 12),
-    aspect: 1.3,
+    tags: ["beat", "lo-fi", "instrumental"],
+    peaks: peaks(66),
+    duration: 74,
   },
   {
     medium: "video",
@@ -110,7 +115,7 @@ export const SAMPLER: readonly PreviewItem[] = [
     artistName: "Otis Delacroix",
     artistHandle: "otis_plays",
     date: "2026-07-12",
-    tags: ["live-take", "performance"],
+    tags: ["blues", "live-take", "guitar"],
     imageSvg: inkWash("#20261a", "#0a0b08", 30),
     aspect: 1.4,
     duration: 96,

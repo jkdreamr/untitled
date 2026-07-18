@@ -1,14 +1,15 @@
 # UNTITLED
 
-**The platform for raw, human-made art.** A product of NOVUM Labs.
+**The platform for raw, human-made music.** A product of NOVUM Labs.
 
-Post the voice memo, the one-take cover, the phone video at the piano, the
-sketchbook page, the film photo, the lyric fragment — the raw thing itself.
-No polishing, no captions to optimize, no algorithm to feed.
+Post the voice memo, the one-take cover, the verse over a beat, the phone video
+at the piano — the raw thing itself. Everything is a track: an audio take or a
+performance video. No polishing, no captions to optimize, no algorithm to feed.
 
-Position: **human-made art, human-made discovery.** AI never generates or
-"improves" the work. Its only jobs are search, recommendation, and enrichment —
-making every piece findable by exactly the people looking for it.
+Position: **raw music, human-made — AI only finds it.** AI never generates or
+"improves" the work. It has two jobs: making the lyrics of a track searchable
+(transcribe → confirm → sync), and helping the right listener find the right
+musician (by sound, by words, by role, by openness to work).
 
 ---
 
@@ -24,10 +25,14 @@ making every piece findable by exactly the people looking for it.
 - Search: **Gemini Embedding 2** (unified multimodal) with a **gte-small** edge
   fallback, fused with Postgres FTS
 
-The app **runs with only the two public Supabase variables set.** Every other
-key unlocks one capability and degrades gracefully when absent (no Gemini →
-gte-small → FTS; no Mux → video posting hidden; no Anthropic/Groq → tags + FTS
-only).
+The app **runs with only the two public Supabase variables set** — and it even
+**builds and deploys with _none_ set**, degrading to a read-only guest shell
+(landing + empty states) so you can ship first and wire up Supabase after. It
+lights up the moment you set the two `NEXT_PUBLIC_SUPABASE_*` vars and redeploy
+(they're inlined at build time, so a redeploy is required). Every other key
+unlocks one capability and degrades gracefully when absent (no Gemini →
+gte-small → FTS; no Mux → video posting hidden; no Groq → lyrics stay as pasted,
+no auto-transcription; either way tracks stay FTS-searchable).
 
 ---
 
@@ -53,7 +58,7 @@ To connect your own Supabase project:
 3. Put `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in `.env.local`.
 4. **Seed** believable content (needs `SUPABASE_SERVICE_ROLE_KEY`):
    ```bash
-   pnpm seed        # 8 fictional artists, ~40 pieces, generated media
+   pnpm seed        # 8 fictional musicians, ~30 tracks (audio + performance video)
    ```
 5. `pnpm dev`, sign up with your email (magic link), and you're in.
 
@@ -73,8 +78,7 @@ See [`.env.example`](./.env.example) for the full, annotated list. Summary:
 | `NEXT_PUBLIC_SUPABASE_URL` / `_ANON_KEY` | ✅ | the app |
 | `SUPABASE_SERVICE_ROLE_KEY` † | — | seed, enrichment writes, Mux webhook, hard delete |
 | `GEMINI_API_KEY` † | — | unified multimodal search (Layer A) |
-| `ANTHROPIC_API_KEY` † | — | image descriptions (search recall + alt text) |
-| `GROQ_API_KEY` † | — | vocal transcription (searchable lyrics) |
+| `GROQ_API_KEY` † | — | vocal transcription → syncable, searchable lyrics |
 | `MUX_TOKEN_ID` / `_SECRET` / `_WEBHOOK_SECRET` † | — | video |
 | `CRON_SECRET` † | — | protects `/api/enrichment/run` |
 | `ENABLE_SCOUT` | — | the `/scout` teaser + waitlist |
@@ -91,9 +95,12 @@ vercel                            # or import the repo in the Vercel dashboard
 
 Set the env vars above in the Vercel project. Two things wire up automatically:
 
-- `vercel.json` schedules a cron hitting `/api/enrichment/run` every 2 minutes;
-  Vercel adds the `Authorization: Bearer $CRON_SECRET` header when `CRON_SECRET`
-  is set, so no route is left open.
+- `vercel.json` schedules a cron hitting `/api/enrichment/run` daily (Vercel
+  **Hobby** allows one cron run per day; on **Pro** tighten it to `*/2 * * * *`
+  for near-real-time enrichment). Vercel adds the `Authorization: Bearer
+  $CRON_SECRET` header when `CRON_SECRET` is set, so no route is left open. Note
+  that tracks are FTS-searchable the instant they post (the insert trigger builds
+  the initial doc); the cron only drives async embeddings/transcription.
 - **Mux webhook**: point a Mux webhook at `https://<your-domain>/api/mux/webhook`
   (event `video.asset.ready`) and set `MUX_WEBHOOK_SECRET` to its signing secret.
 
@@ -108,7 +115,7 @@ Recommendation neighborhoods refresh nightly via `pg_cron` (migration `0013`).
   **keyset pagination** on `(published_at, id)` (never offset). RSC-streamed
   load-more; audio keeps playing across navigation through one global `<audio>`.
 - **Wander**: similarity + interest + co-collection scoring, then **forced
-  diversity** applied in the app — never >2 consecutive same-medium/same-artist,
+  diversity** applied in the app — never >2 consecutive same-kind/same-artist,
   ~20% exploration slots (artists with <5 followers), a calm interstitial every
   ~40 pieces. No trending, no leaderboards, nothing optimized for time-on-app.
 
@@ -124,23 +131,29 @@ Pieces are searchable by tags/FTS **the instant they post** (a trigger builds
 the initial search doc); semantic enrichment lands within ~a minute via the
 async job queue.
 
-### Media pipeline
-- **Sound** (≤6 min): client decodes with Web Audio and computes ~800 peaks,
+### Media pipeline — everything is a track
+- **Audio** (≤6 min): client decodes with Web Audio and computes ~800 peaks,
   uploads the original directly to Storage via a signed URL; the waveform draws
   from stored peaks — playback never downloads a file to draw.
-- **Image** (≤6/roll): originals stage to Storage, a server route runs sharp to
-  **strip all EXIF (incl. GPS)**, convert HEIC → webp, downscale (never crop),
-  and emit a blurhash. Bytes stay off the serverless request body.
 - **Video** (≤3 min): Mux direct upload → `video.asset.ready` webhook (signature
   verified) writes the playback id + a video media row. "developing…" until then.
-- **Words** (≤2000): rendered in Instrument Serif via a whitespace-safe
-  component (no `dangerouslySetInnerHTML`).
+- **Lyrics** are a property of a track, not a separate post: pasted by the
+  artist (`written`), or transcribed from the vocal and **confirmed** by the
+  artist (`transcribed_confirmed`). Confirmed lyrics render in Instrument Serif
+  via a whitespace-safe component (no `dangerouslySetInnerHTML`) and, when
+  synced, scroll with the player. Raw, unconfirmed transcription is never shown.
+
+Each track also carries a **kind** (`original` / `cover` / `beat` / `freestyle`),
+a `has_vocals` flag, and optional cover attribution (`cover_of_title` /
+`cover_of_artist`).
 
 ### Enrichment (async — posting never waits)
-A trigger enqueues `embed` / `describe|transcribe` / `index` jobs. The worker
-(`/api/enrichment/run`, drained by cron) calls Anthropic vision, Groq Whisper,
-and the embedding provider, writing to `piece_search`. Missing keys → the stage
-is a no-op and the piece stays FTS-searchable.
+A trigger enqueues `embed` / `transcribe` / `index` jobs (transcribe only for
+vocal tracks). The worker (`/api/enrichment/run`, drained by cron) calls Groq
+Whisper (`verbose_json` → segment timings) and the embedding provider, writing to
+`piece_search`. Missing keys → the stage is a no-op and the track stays
+FTS-searchable. Lyrics are folded into FTS at **weight A**; the rest of the doc
+is weight B.
 
 ### Security model
 - **RLS on every table.** Public read only where `visibility='public' AND
@@ -180,21 +193,24 @@ dimensions (CLS-safe); one global `<audio>` with `preload="none"`; Mux
 poster-first; keyset pagination everywhere; HNSW on embeddings; composite
 indexes on every feed/profile/wander path.
 
-### `EXPLAIN ANALYZE` — the five hottest queries
+### `EXPLAIN ANALYZE` — the hottest queries
 
-Measured on a 600-piece / 8-artist dataset (Supabase, `us-east-1`), stats
-freshly `ANALYZE`d. Server-side execution time:
+Measured on synthetic datasets (Supabase, `us-east-1`), stats freshly `ANALYZE`d.
+Server-side execution time (total, including per-card jsonb assembly):
 
-| Query | Plan | Exec time |
+| Query | Notes | Exec time |
 | --- | --- | --- |
 | Following feed (keyset) | `Index Scan using pieces_feed_idx` | **0.53 ms** |
 | Profile grid (keyset) | `pieces_feed_idx` + memoized profile join | **0.97 ms** |
-| Search — FTS path | GIN `piece_search_fts_idx` (seq-scan here only because the synthetic docs are identical → 100% selectivity) | **4.5 ms** |
+| Track search — FTS + RRF + lyric_hit (300 tracks, 24 cards) | weighted GIN `piece_search_fts_idx`, fused + assembled | **22.7 ms** |
+| Talent search — `search_artists` (60 musicians) | trigram identity match + role/openness/genre filters | **5.6 ms** |
 | Wander candidate scan | `Index Scan using pieces_visibility_idx` | **0.53 ms** |
 | Feed card assembly (20 cards via `piece_card_json`) | 1 index scan + per-card jsonb build | **19.3 ms** (~1 ms/card) |
 
-Search server-side p95 (FTS + fuse + assemble) lands well under the 250 ms
-target; the vector path adds an HNSW scan of similar cost when embeddings exist.
+Both search paths land far under the 250 ms p95 target; the vector arm adds an
+HNSW scan of similar cost when embeddings exist. The synced-lyrics view follows
+the playhead with a single `requestAnimationFrame` loop that only re-renders when
+the active line changes — no per-frame React state — so it stays jank-free.
 
 Budget targets (verify with Lighthouse on landing / feed / piece): LCP < 1.5s,
 INP < 200ms, CLS < 0.05, Lighthouse ≥ 90 performance & accessibility.
@@ -204,10 +220,12 @@ INP < 200ms, CLS < 0.05, Lighthouse ≥ 90 performance & accessibility.
 ## Product rules (non-negotiable)
 
 Human-made only (one-tap "I made this" attestation; TOS no-AI-training clause).
-AI never touches the art. Untitled by default (`untitled no. {n}`). Reactions
-visible but quiet-mode-toggleable. No engagement-ranked feeds. Artists never
-pay. Consent & rights baked in; account deletion hard-deletes media everywhere;
-no download buttons on others' work.
+AI never generates or "improves" the music — it only finds it. Everything is a
+track (audio or performance video); lyrics are a property of a track, and raw
+unconfirmed transcription is never shown. Untitled by default (`untitled no.
+{n}`). Reactions visible but quiet-mode-toggleable. No engagement-ranked feeds.
+Artists never pay. Consent & rights baked in; account deletion hard-deletes media
+everywhere; no download buttons on others' work.
 
 ---
 
@@ -219,8 +237,7 @@ app/
   (auth)/             login · onboarding
   (app)/              feed · wander · search · compose · piece · [handle] ·
                       collections · c/[id] · dashboard · settings · admin
-  api/                media/process-image · media/avatar · mux/* · search ·
-                      enrichment/run
+  api/                media/avatar · mux/* · search · enrichment/run
   auth/callback/      magic-link / OAuth exchange
 components/           brand · nav · player · piece · feed · wander · search · …
 lib/
@@ -230,7 +247,8 @@ lib/
   enrichment/         worker + vision + transcription
   compose/ piece/ account/ admin/ …   server actions
 supabase/
-  migrations/         0001–0014 (schema, RLS, RPCs, storage, recs, cron, hardening)
+  migrations/         0001–0017 (schema, RLS, RPCs, storage, recs, cron,
+                      hardening, music pivot)
   functions/embed/    gte-small edge function
   tests/rls.test.sql  pgTAP
 scripts/seed.ts       pnpm seed

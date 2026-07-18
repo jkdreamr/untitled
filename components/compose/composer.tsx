@@ -6,24 +6,27 @@ import { Button } from "@/components/ui/button";
 import { decodeAudioPeaks } from "@/lib/audio/peaks";
 import { putWithProgress } from "@/lib/upload/xhr";
 import { requestUploadUrl, publishPiece, searchAfterPieces } from "@/lib/compose/actions";
-import { suggestedTagsForMedium, TAXONOMY, normalizeTags } from "@/lib/taxonomy";
+import { suggestedStarterTags, normalizeTags } from "@/lib/taxonomy";
 import { extOf } from "@/lib/media/validate";
-import { formatDuration } from "@/lib/utils";
-import { cn } from "@/lib/utils";
-import type { Medium, Visibility } from "@/lib/types";
+import { formatDuration, cn } from "@/lib/utils";
+import type { TrackKind, TrackMedium, Visibility } from "@/lib/types";
 
-type Kind = Medium | null;
+type Kind = TrackMedium | null;
 interface AudioMeta { path: string; duration: number; peaks: number[]; mime: string; bytes: number }
-interface ImageMeta { path: string; width: number; height: number; blurhash: string; bytes: number }
 interface AfterRef { id: string; label: string; handle: string }
 
-function detectKind(file: File): Exclude<Kind, null> | "unknown" {
+const TRACK_KINDS: { value: TrackKind; label: string; hint: string }[] = [
+  { value: "original", label: "original", hint: "your own song" },
+  { value: "cover", label: "cover", hint: "someone else's song" },
+  { value: "freestyle", label: "freestyle", hint: "off the top / over a beat" },
+  { value: "beat", label: "beat", hint: "an instrumental, no vocals" },
+];
+
+function detectKind(file: File): TrackMedium | "unknown" {
   if (file.type.startsWith("audio/")) return "sound";
-  if (file.type.startsWith("image/")) return "image";
   if (file.type.startsWith("video/")) return "video";
   const ext = extOf(file.name);
   if (["mp3", "wav", "m4a", "ogg", "flac", "aac"].includes(ext)) return "sound";
-  if (["jpg", "jpeg", "png", "webp", "heic", "heif", "gif"].includes(ext)) return "image";
   if (["mp4", "mov", "webm", "m4v"].includes(ext)) return "video";
   return "unknown";
 }
@@ -36,15 +39,19 @@ export function Composer({ videoEnabled, welcome }: { videoEnabled: boolean; wel
   const [error, setError] = useState<string | null>(null);
 
   const [audio, setAudio] = useState<AudioMeta | null>(null);
-  const [images, setImages] = useState<ImageMeta[]>([]);
   const [videoReady, setVideoReady] = useState(false);
-  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   // form
   const [attested, setAttested] = useState(false);
+  const [trackKind, setTrackKind] = useState<TrackKind>("original");
+  const [hasVocals, setHasVocals] = useState(true);
+  const [coverTitle, setCoverTitle] = useState("");
+  const [coverArtist, setCoverArtist] = useState("");
   const [title, setTitle] = useState("");
   const [caption, setCaption] = useState("");
-  const [body, setBody] = useState("");
+  const [lyrics, setLyrics] = useState("");
+  const [showLyrics, setShowLyrics] = useState(true);
   const [tags, setTags] = useState<string[]>([]);
   const [visibility, setVisibility] = useState<Visibility>("public");
   const [after, setAfter] = useState<AfterRef | null>(null);
@@ -53,9 +60,10 @@ export function Composer({ videoEnabled, welcome }: { videoEnabled: boolean; wel
   const inputRef = useRef<HTMLInputElement>(null);
 
   const reset = () => {
-    previewUrls.forEach((u) => URL.revokeObjectURL(u));
-    setKind(null); setPieceId(""); setAudio(null); setImages([]); setVideoReady(false);
-    setPreviewUrls([]); setAttested(false); setTitle(""); setCaption(""); setBody("");
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setKind(null); setPieceId(""); setAudio(null); setVideoReady(false); setPreviewUrl(null);
+    setAttested(false); setTrackKind("original"); setHasVocals(true); setCoverTitle(""); setCoverArtist("");
+    setTitle(""); setCaption(""); setLyrics(""); setShowLyrics(true);
     setTags([]); setAfter(null); setError(null); setProgress(0);
   };
 
@@ -74,39 +82,16 @@ export function Composer({ videoEnabled, welcome }: { videoEnabled: boolean; wel
         if (detected === "sound") {
           setKind("sound");
           const { peaks, duration } = await decodeAudioPeaks(first);
-          if (duration > 360) throw new Error("sound is capped at 6 minutes.");
+          if (duration > 360) throw new Error("a track is capped at 6 minutes.");
           const ext = extOf(first.name) || "mp3";
-          const url = await requestUploadUrl(id, "audio", ext);
+          const url = await requestUploadUrl(id, ext);
           if (!url.ok) throw new Error(url.error);
           await putWithProgress(url.signedUrl, first, setProgress, { "content-type": first.type || "audio/mpeg" });
           setAudio({ path: url.path, duration, peaks, mime: first.type || "audio/mpeg", bytes: first.size });
-          setTags(suggestedTagsForMedium("sound").slice(0, 0));
-        } else if (detected === "image") {
-          setKind("image");
-          const list = Array.from(files).slice(0, 6);
-          setPreviewUrls(list.map((f) => URL.createObjectURL(f)));
-          const metas: ImageMeta[] = [];
-          for (let i = 0; i < list.length; i++) {
-            const f = list[i]!;
-            const ext = extOf(f.name) || "jpg";
-            const staging = await requestUploadUrl(id, "staging", ext);
-            if (!staging.ok) throw new Error(staging.error);
-            await putWithProgress(staging.signedUrl, f, (p) => setProgress((i + p) / list.length), {
-              "content-type": f.type || "image/jpeg",
-            });
-            const res = await fetch("/api/media/process-image", {
-              method: "POST",
-              headers: { "content-type": "application/json" },
-              body: JSON.stringify({ pieceId: id, stagingPath: staging.path, position: i }),
-            });
-            if (!res.ok) throw new Error("couldn't process an image.");
-            metas.push((await res.json()) as ImageMeta);
-          }
-          setImages(metas);
         } else if (detected === "video") {
           if (!videoEnabled) throw new Error("video posting isn't available right now.");
           setKind("video");
-          setPreviewUrls([URL.createObjectURL(first)]);
+          setPreviewUrl(URL.createObjectURL(first));
           const res = await fetch("/api/mux/upload", {
             method: "POST",
             headers: { "content-type": "application/json" },
@@ -117,7 +102,7 @@ export function Composer({ videoEnabled, welcome }: { videoEnabled: boolean; wel
           await putWithProgress(uploadUrl, first, setProgress, { "content-type": first.type || "video/mp4" });
           setVideoReady(true);
         } else {
-          throw new Error("that file type isn't supported.");
+          throw new Error("drop an audio file or a video — that's what a track is.");
         }
       } catch (e) {
         setError(e instanceof Error ? e.message : "something went wrong.");
@@ -130,36 +115,39 @@ export function Composer({ videoEnabled, welcome }: { videoEnabled: boolean; wel
     [videoEnabled],
   );
 
-  async function startWords() {
-    setError(null);
-    setKind("words");
-    setPieceId(crypto.randomUUID());
-  }
+  const ready = (kind === "sound" && !!audio) || (kind === "video" && videoReady);
+  const isBeat = trackKind === "beat";
 
-  const ready =
-    (kind === "sound" && !!audio) ||
-    (kind === "image" && images.length > 0) ||
-    (kind === "video" && videoReady) ||
-    (kind === "words" && body.trim().length > 0);
+  function selectKind(k: TrackKind) {
+    setTrackKind(k);
+    if (k === "beat") { setHasVocals(false); setLyrics(""); }
+    else if (!hasVocals) setHasVocals(true);
+  }
 
   async function publish() {
     if (!attested) return setError("tap the attestation — this must be human-made.");
     if (!ready) return;
+    if (trackKind === "cover" && !coverTitle.trim()) return setError("name the song you're covering.");
     setPublishing(true);
     setError(null);
     try {
       const res = await publishPiece({
         id: pieceId,
         medium: kind!,
+        track_kind: trackKind,
+        has_vocals: isBeat ? false : hasVocals,
         attested: true,
         title: title.trim() || null,
         caption: caption.trim() || null,
-        body: body.trim() || null,
+        cover_of_title: coverTitle.trim() || null,
+        cover_of_artist: coverArtist.trim() || null,
+        lyrics: !isBeat && lyrics.trim() ? lyrics.trim() : null,
+        lyrics_source: !isBeat && lyrics.trim() ? "written" : null,
+        show_lyrics: showLyrics,
         tags: normalizeTags(tags),
         after_piece_id: after?.id ?? null,
         visibility,
         audio: kind === "sound" && audio ? audio : undefined,
-        images: kind === "image" ? images : undefined,
         video: kind === "video" ? { upload_id: pieceId } : undefined,
       });
       if (res && !res.ok) setError(res.error ?? "couldn't post.");
@@ -186,38 +174,29 @@ export function Composer({ videoEnabled, welcome }: { videoEnabled: boolean; wel
       )}
 
       {kind === null ? (
-        <DropZone
-          inputRef={inputRef}
-          onFiles={onFiles}
-          onWords={startWords}
-          videoEnabled={videoEnabled}
-          busy={busy}
-        />
+        <DropZone inputRef={inputRef} onFiles={onFiles} videoEnabled={videoEnabled} busy={busy} />
       ) : (
         <div className="space-y-8">
           <div className="flex items-center justify-between">
-            <span className="meta meta-caps text-bone-46">{kind}</span>
+            <span className="meta meta-caps text-bone-46">{kind === "sound" ? "audio" : "video"}</span>
             <button onClick={reset} className="meta text-bone-46 hover:text-bone">
               start over
             </button>
           </div>
 
-          <MediaPreview
-            kind={kind}
-            audio={audio}
-            images={images}
-            previewUrls={previewUrls}
-            videoReady={videoReady}
-            body={body}
-            setBody={setBody}
-          />
+          <MediaPreview kind={kind} audio={audio} previewUrl={previewUrl} videoReady={videoReady} />
 
           <PublishForm
             kind={kind}
             attested={attested} setAttested={setAttested}
+            trackKind={trackKind} selectKind={selectKind}
+            hasVocals={hasVocals} setHasVocals={setHasVocals}
+            coverTitle={coverTitle} setCoverTitle={setCoverTitle}
+            coverArtist={coverArtist} setCoverArtist={setCoverArtist}
             title={title} setTitle={setTitle}
             caption={caption} setCaption={setCaption}
-            body={body} setBody={setBody}
+            lyrics={lyrics} setLyrics={setLyrics}
+            showLyrics={showLyrics} setShowLyrics={setShowLyrics}
             tags={tags} setTags={setTags}
             visibility={visibility} setVisibility={setVisibility}
             after={after} setAfter={setAfter}
@@ -226,7 +205,7 @@ export function Composer({ videoEnabled, welcome }: { videoEnabled: boolean; wel
           {error && <p role="alert" className="text-sm text-bone-64">{error}</p>}
 
           <div className="flex items-center justify-between border-t border-bone-10 pt-6">
-            <p className="meta max-w-xs text-bone-32">
+            <p className="meta max-w-xs text-bone-52">
               posts as untitled unless you title it. searchable the moment it lands.
             </p>
             <Button variant="solid" size="lg" onClick={publish} disabled={!ready || !attested || publishing}>
@@ -242,16 +221,15 @@ export function Composer({ videoEnabled, welcome }: { videoEnabled: boolean; wel
 }
 
 function DropZone({
-  inputRef, onFiles, onWords, videoEnabled, busy,
+  inputRef, onFiles, videoEnabled, busy,
 }: {
   inputRef: React.RefObject<HTMLInputElement | null>;
   onFiles: (f: FileList | null) => void;
-  onWords: () => void;
   videoEnabled: boolean;
   busy: boolean;
 }) {
   const [drag, setDrag] = useState(false);
-  const accept = videoEnabled ? "audio/*,image/*,video/*" : "audio/*,image/*";
+  const accept = videoEnabled ? "audio/*,video/*" : "audio/*";
   return (
     <div>
       <div
@@ -264,28 +242,24 @@ function DropZone({
         )}
       >
         <div>
-          <h1 className="font-serif text-4xl text-bone sm:text-5xl">drop the raw thing.</h1>
+          <h1 className="font-serif text-4xl text-bone sm:text-5xl">drop the take.</h1>
           <p className="mt-3 text-sm text-bone-46">
-            a voice memo, a photo, a drawing{videoEnabled ? ", a video" : ""}. we&apos;ll figure out the rest.
+            a voice memo, a one-take cover, a verse over a beat{videoEnabled ? ", a video at the piano" : ""}. we&apos;ll figure out the rest.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Button variant="solid" size="lg" onClick={() => inputRef.current?.click()} disabled={busy}>
               choose a file
-            </Button>
-            <Button variant="outline" size="lg" onClick={onWords} disabled={busy}>
-              write words
             </Button>
           </div>
           <input
             ref={inputRef}
             type="file"
             accept={accept}
-            multiple
             className="sr-only"
             onChange={(e) => onFiles(e.target.files)}
           />
           <p className="meta mt-8 text-bone-32">
-            sound ≤ 6 min · images ≤ 6 per roll{videoEnabled ? " · video ≤ 3 min" : ""} · words ≤ 2,000
+            audio ≤ 6 min{videoEnabled ? " · video ≤ 3 min" : ""} · lyrics optional
           </p>
         </div>
       </div>
@@ -294,15 +268,12 @@ function DropZone({
 }
 
 function MediaPreview({
-  kind, audio, images, previewUrls, videoReady, body, setBody,
+  kind, audio, previewUrl, videoReady,
 }: {
-  kind: Medium;
+  kind: TrackMedium;
   audio: AudioMeta | null;
-  images: ImageMeta[];
-  previewUrls: string[];
+  previewUrl: string | null;
   videoReady: boolean;
-  body: string;
-  setBody: (v: string) => void;
 }) {
   if (kind === "sound" && audio) {
     return (
@@ -315,53 +286,43 @@ function MediaPreview({
       </div>
     );
   }
-  if (kind === "image") {
-    return (
-      <div className="no-scrollbar flex gap-3 overflow-x-auto">
-        {previewUrls.map((u, i) => (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img key={i} src={u} alt="" className="h-48 w-auto rounded-lg object-cover" />
-        ))}
-        {images.length === 0 && <p className="meta text-bone-46">processing…</p>}
-      </div>
-    );
-  }
-  if (kind === "video") {
-    return (
-      <div className="grid aspect-video place-items-center rounded-lg bg-ink-sunken">
-        {previewUrls[0] ? (
-          <video src={previewUrls[0]} className="h-full w-full rounded-lg object-contain" muted controls />
-        ) : null}
-        {!videoReady && <p className="meta absolute text-bone-46">uploading to mux…</p>}
-      </div>
-    );
-  }
-  // words
+  // video
   return (
-    <textarea
-      value={body}
-      onChange={(e) => setBody(e.target.value.slice(0, 2000))}
-      autoFocus
-      rows={10}
-      placeholder="lyrics, a poem, a fragment, prose…"
-      className="w-full resize-none rounded-lg bg-ink-sunken/40 p-6 font-serif text-[1.35rem] leading-relaxed text-bone outline-none placeholder:text-bone-32 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime"
-    />
+    <div className="relative grid aspect-video place-items-center rounded-lg bg-ink-sunken">
+      {previewUrl ? (
+        <video src={previewUrl} className="h-full w-full rounded-lg object-contain" muted controls />
+      ) : null}
+      {!videoReady && <p className="meta absolute text-bone-46">uploading to mux…</p>}
+    </div>
   );
 }
 
 function PublishForm(props: {
-  kind: Medium;
+  kind: TrackMedium;
   attested: boolean; setAttested: (v: boolean) => void;
+  trackKind: TrackKind; selectKind: (v: TrackKind) => void;
+  hasVocals: boolean; setHasVocals: (v: boolean) => void;
+  coverTitle: string; setCoverTitle: (v: string) => void;
+  coverArtist: string; setCoverArtist: (v: string) => void;
   title: string; setTitle: (v: string) => void;
   caption: string; setCaption: (v: string) => void;
-  body: string; setBody: (v: string) => void;
+  lyrics: string; setLyrics: (v: string) => void;
+  showLyrics: boolean; setShowLyrics: (v: boolean) => void;
   tags: string[]; setTags: (v: string[]) => void;
   visibility: Visibility; setVisibility: (v: Visibility) => void;
   after: AfterRef | null; setAfter: (v: AfterRef | null) => void;
 }) {
-  const { kind, attested, setAttested, title, setTitle, caption, setCaption, body, setBody, tags, setTags, visibility, setVisibility, after, setAfter } = props;
+  const {
+    kind, attested, setAttested, trackKind, selectKind, hasVocals, setHasVocals,
+    coverTitle, setCoverTitle, coverArtist, setCoverArtist, title, setTitle,
+    caption, setCaption, lyrics, setLyrics, showLyrics, setShowLyrics,
+    tags, setTags, visibility, setVisibility, after, setAfter,
+  } = props;
   const [customTag, setCustomTag] = useState("");
-  const suggestions = suggestedTagsForMedium(kind);
+  const suggestions = suggestedStarterTags();
+  const isBeat = trackKind === "beat";
+  const isCover = trackKind === "cover";
+  const isFreestyle = trackKind === "freestyle";
 
   function toggleTag(t: string) {
     setTags(tags.includes(t) ? tags.filter((x) => x !== t) : tags.length < 8 ? [...tags, t] : tags);
@@ -378,19 +339,92 @@ function PublishForm(props: {
       <label className={cn("flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors", attested ? "border-lime/50 bg-lime/5" : "border-bone-16")}>
         <input type="checkbox" checked={attested} onChange={(e) => setAttested(e.target.checked)} className="mt-0.5 size-4 accent-lime" />
         <span className="text-sm text-bone-64">
-          <span className="text-bone">I made this.</span> it&apos;s human-made — no AI-generated images,
-          vocals, music, or text. it won&apos;t be used to train AI.
+          <span className="text-bone">I made this.</span> it&apos;s human-made — no AI-generated vocals,
+          instruments, or lyrics. it won&apos;t be used to train AI.
         </span>
       </label>
 
+      {/* track kind */}
+      <div>
+        <p className="meta meta-caps mb-2 text-bone-52">what is it</p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {TRACK_KINDS.map((k) => {
+            const on = trackKind === k.value;
+            return (
+              <button
+                key={k.value}
+                type="button"
+                onClick={() => selectKind(k.value)}
+                aria-pressed={on}
+                className={cn(
+                  "rounded-lg border px-3 py-2.5 text-left transition-colors",
+                  on ? "border-lime bg-lime/10" : "border-bone-16 hover:border-bone-32",
+                )}
+              >
+                <span className={cn("block text-sm", on ? "text-lime" : "text-bone")}>{k.label}</span>
+                <span className="meta mt-0.5 block text-bone-52">{k.hint}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* cover / freestyle attribution */}
+      {(isCover || isFreestyle) && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <input
+            value={coverTitle}
+            onChange={(e) => setCoverTitle(e.target.value)}
+            maxLength={120}
+            placeholder={isCover ? "song you're covering" : "beat / song it's over (optional)"}
+            className="h-11 rounded-lg border border-bone-16 bg-ink-sunken px-4 text-sm text-bone outline-none placeholder:text-bone-32 focus-visible:border-lime/40"
+          />
+          <input
+            value={coverArtist}
+            onChange={(e) => setCoverArtist(e.target.value)}
+            maxLength={120}
+            placeholder="original artist (optional)"
+            className="h-11 rounded-lg border border-bone-16 bg-ink-sunken px-4 text-sm text-bone outline-none placeholder:text-bone-32 focus-visible:border-lime/40"
+          />
+        </div>
+      )}
+
+      {/* vocals toggle (hidden for beats) */}
+      {!isBeat && (
+        <label className="flex cursor-pointer items-center gap-3">
+          <input type="checkbox" checked={hasVocals} onChange={(e) => setHasVocals(e.target.checked)} className="size-4 accent-lime" />
+          <span className="text-sm text-bone-64">this has vocals <span className="text-bone-32">— we&apos;ll help make the lyrics searchable</span></span>
+        </label>
+      )}
+
+      {/* lyrics (hidden for beats) */}
+      {!isBeat && (
+        <div>
+          <p className="meta meta-caps mb-2 text-bone-52">lyrics <span className="text-bone-32">· optional</span></p>
+          <textarea
+            value={lyrics}
+            onChange={(e) => setLyrics(e.target.value.slice(0, 4000))}
+            rows={5}
+            placeholder="paste the words — or leave it, and we can transcribe them from the vocal for you to confirm."
+            className="w-full resize-none rounded-lg border border-bone-16 bg-ink-sunken p-4 font-serif text-[1.1rem] leading-relaxed text-bone outline-none placeholder:font-sans placeholder:text-sm placeholder:text-bone-32 focus-visible:border-lime/40"
+          />
+          {kind === "video" && lyrics.trim() && (
+            <label className="mt-2 flex cursor-pointer items-center gap-3">
+              <input type="checkbox" checked={showLyrics} onChange={(e) => setShowLyrics(e.target.checked)} className="size-4 accent-lime" />
+              <span className="text-sm text-bone-64">open the lyric panel by default on this video</span>
+            </label>
+          )}
+        </div>
+      )}
+
       {/* tags */}
       <div>
-        <p className="meta meta-caps mb-2 text-bone-46">tags {tags.length > 0 && `· ${tags.length}`}</p>
+        <p className="meta meta-caps mb-2 text-bone-52">tags {tags.length > 0 && `· ${tags.length}`}</p>
         <div className="flex flex-wrap gap-2">
           {[...new Set([...tags, ...suggestions])].map((t) => {
             const on = tags.includes(t);
             return (
-              <button key={t} type="button" onClick={() => toggleTag(t)} className={cn("rounded-full border px-3 py-1.5 font-mono text-[0.75rem] transition-colors", on ? "border-lime bg-lime/10 text-lime" : "border-bone-16 text-bone-46 hover:text-bone")}>
+              <button key={t} type="button" onClick={() => toggleTag(t)} aria-pressed={on} className={cn("rounded-full border px-3 py-1.5 font-mono text-[0.75rem] transition-colors", on ? "border-lime bg-lime/10 text-lime" : "border-bone-16 text-bone-64 hover:text-bone")}>
                 {t}
               </button>
             );
@@ -405,19 +439,14 @@ function PublishForm(props: {
         <input value={caption} onChange={(e) => setCaption(e.target.value)} maxLength={280} placeholder="caption (optional)" className="h-11 rounded-lg border border-bone-16 bg-ink-sunken px-4 text-sm text-bone outline-none placeholder:text-bone-32 focus-visible:border-lime/40" />
       </div>
 
-      {/* lyrics pairing for sound/image */}
-      {(kind === "sound" || kind === "image") && (
-        <textarea value={body} onChange={(e) => setBody(e.target.value.slice(0, 2000))} rows={3} placeholder="words to pair with it — lyrics, a note (optional)" className="w-full resize-none rounded-lg border border-bone-16 bg-ink-sunken p-4 font-serif text-base text-bone outline-none placeholder:text-bone-32 focus-visible:border-lime/40" />
-      )}
-
       <AfterPicker after={after} setAfter={setAfter} />
 
       {/* visibility */}
       <div>
-        <p className="meta meta-caps mb-2 text-bone-46">who sees it</p>
+        <p className="meta meta-caps mb-2 text-bone-52">who sees it</p>
         <div className="inline-flex rounded-full border border-bone-16 p-1">
           {(["public", "followers", "unlisted"] as Visibility[]).map((v) => (
-            <button key={v} type="button" onClick={() => setVisibility(v)} className={cn("rounded-full px-4 py-1.5 text-sm transition-colors", visibility === v ? "bg-bone text-ink" : "text-bone-46 hover:text-bone")}>
+            <button key={v} type="button" onClick={() => setVisibility(v)} aria-pressed={visibility === v} className={cn("rounded-full px-4 py-1.5 text-sm transition-colors", visibility === v ? "bg-bone text-ink" : "text-bone-64 hover:text-bone")}>
               {v}
             </button>
           ))}
@@ -452,8 +481,8 @@ function AfterPicker({ after, setAfter }: { after: AfterRef | null; setAfter: (v
   }
   return (
     <div>
-      <p className="meta meta-caps mb-2 text-bone-46">after (optional)</p>
-      <input value={q} onChange={(e) => onChange(e.target.value)} placeholder="a cover's original, the photo a drawing came from…" className="h-11 w-full rounded-lg border border-bone-16 bg-ink-sunken px-4 text-sm text-bone outline-none placeholder:text-bone-32 focus-visible:border-lime/40" />
+      <p className="meta meta-caps mb-2 text-bone-52">after (optional)</p>
+      <input value={q} onChange={(e) => onChange(e.target.value)} placeholder="the original a cover answers, the track a freestyle rides…" className="h-11 w-full rounded-lg border border-bone-16 bg-ink-sunken px-4 text-sm text-bone outline-none placeholder:text-bone-32 focus-visible:border-lime/40" />
       {results.length > 0 && (
         <div className="mt-2 overflow-hidden rounded-lg border border-bone-10">
           {results.map((r) => (

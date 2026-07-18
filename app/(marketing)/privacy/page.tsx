@@ -26,8 +26,8 @@ export default function PrivacyPage() {
           links: whatever you choose to put there.
         </li>
         <li className="border-l border-bone-16 pl-4">
-          <span className="text-bone">the work you post</span> — the audio, video, images, or words
-          themselves, plus the basic file details that come with them.
+          <span className="text-bone">the music you post</span> — the audio or video itself and any
+          lyrics you add, plus the basic file details that come with them.
         </li>
         <li className="border-l border-bone-16 pl-4">
           <span className="text-bone">aggregate counts on your own pieces</span> — listens and

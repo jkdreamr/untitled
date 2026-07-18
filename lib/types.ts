@@ -1,12 +1,40 @@
 import type { Enums } from "@/lib/supabase/types";
 
 export type Medium = Enums<"medium">;
+/** A track is one of two things: an audio take, or a performance video. */
+export type TrackMedium = "sound" | "video";
+export type TrackKind = Enums<"track_kind">;
+export type LyricsSource = Enums<"lyrics_source">;
 export type Visibility = Enums<"visibility">;
 export type ReactionKind = Enums<"reaction_kind">;
 export type MediaKind = Enums<"media_kind">;
 export type PieceStatus = Enums<"piece_status">;
 export type ReportReason = Enums<"report_reason">;
 export type ReportTarget = Enums<"report_target">;
+
+/** The eight musician roles a profile can claim. */
+export const ARTIST_ROLES = [
+  "vocalist",
+  "rapper",
+  "songwriter",
+  "producer",
+  "instrumentalist",
+  "engineer",
+  "composer",
+  "dj",
+] as const;
+export type ArtistRole = (typeof ARTIST_ROLES)[number];
+
+/** What a musician is open to. */
+export const OPEN_TO = ["collabs", "writing", "features", "sessions"] as const;
+export type OpenTo = (typeof OPEN_TO)[number];
+
+/** One time-synced lyric line, confirmed by the artist. */
+export interface LyricSegment {
+  start: number;
+  end: number;
+  text: string;
+}
 
 /** A single concrete media file within a piece, plus its signed URL (added server-side). */
 export interface MediaItem {
@@ -29,6 +57,8 @@ export interface CardArtist {
   display_name: string;
   avatar_path: string | null;
   quiet_mode: boolean;
+  /** The musician roles this artist claims (may be empty). */
+  roles: string[];
   /** Signed avatar URL, attached by the data layer. */
   avatar_url: string | null;
 }
@@ -45,10 +75,21 @@ export interface AfterRef {
 /** The canonical card shape returned by `piece_card_json` (parsed + URL-signed). */
 export interface PieceCard {
   id: string;
+  /** 'sound' or 'video' — how the track is played. */
   medium: Medium;
+  track_kind: TrackKind;
+  has_vocals: boolean;
   title: string | null;
   caption: string | null;
-  body: string | null;
+  cover_of_title: string | null;
+  cover_of_artist: string | null;
+  /** Confirmed lyric text — written by the artist or a transcription they confirmed. */
+  lyrics: string | null;
+  lyrics_source: LyricsSource | null;
+  /** Confirmed, time-synced lyric lines (empty when none). */
+  lyric_segments: LyricSegment[];
+  /** Artist preference: open the lyric panel by default on a video track. */
+  show_lyrics: boolean;
   tags: string[];
   visibility: Visibility;
   status: PieceStatus;
@@ -71,6 +112,9 @@ export interface PieceCard {
     following: boolean;
     is_owner: boolean;
   };
+  /** Search-only hints: which retrieval arm surfaced this result (set by search_pieces). */
+  lyric_hit?: boolean;
+  semantic?: boolean;
 }
 
 export interface PieceComment {
@@ -86,8 +130,24 @@ export interface WanderItem {
   card: PieceCard;
   score: number;
   is_exploration: boolean;
-  medium: Medium;
+  track_kind: TrackKind;
   artist_id: string;
+}
+
+/** A musician surfaced by talent search (`search_artists`), URL-signed. */
+export interface ArtistResult {
+  id: string;
+  handle: string;
+  display_name: string;
+  avatar_path: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+  voice_note: string | null;
+  roles: string[];
+  open_to: string[];
+  follower_count: number;
+  track_count: number;
+  top_tags: string[];
 }
 
 /** A keyset cursor for reverse-chronological pagination. */

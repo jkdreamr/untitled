@@ -11,10 +11,12 @@ export function VideoBlock({
   playbackId,
   title,
   aspect = 16 / 9,
+  priority = false,
 }: {
   playbackId: string | null;
   title: string;
   aspect?: number;
+  priority?: boolean;
 }) {
   if (!playbackId) {
     return (
@@ -36,6 +38,7 @@ export function VideoBlock({
         streamType="on-demand"
         playbackId={playbackId}
         poster={muxThumbnail(playbackId, 1200)}
+        preload={priority ? "auto" : "metadata"}
         accentColor="#C8FF5E"
         metadata={{ video_title: title }}
         muted

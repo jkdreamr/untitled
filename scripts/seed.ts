@@ -1,19 +1,19 @@
 /**
- * UNTITLED seed — 8 believable fictional artists and ~40 pieces across all media.
- * Media is generated programmatically (small WAV melodies, SVG-derived webp art);
- * no fabricated display metrics — reactions/follows are real seeded interactions.
+ * UNTITLED seed — 8 believable fictional musicians and ~30 tracks.
+ * Everything is a track: short WAV takes generated programmatically, with a mix
+ * of kinds (original / cover / beat / freestyle), vocals, and lyrics (some
+ * time-synced). No fabricated display metrics — reactions/follows are real
+ * seeded interactions. Video isn't seeded (it needs the Mux upload flow).
  *
  *   pnpm seed
  *
  * Requires NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY (see .env.example).
- * Idempotent: re-running removes the previous seed artists first.
+ * Idempotent: re-running removes the previous seed musicians first.
  */
 import "dotenv/config";
 import { createClient } from "@supabase/supabase-js";
-import { encode } from "blurhash";
-import sharp from "sharp";
 import { randomUUID } from "node:crypto";
-import type { Database } from "../lib/supabase/types";
+import type { Database, Json } from "../lib/supabase/types";
 
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -26,24 +26,22 @@ const db = createClient<Database>(URL, SERVICE, { auth: { autoRefreshToken: fals
 const SEED_DOMAIN = "seed.untitled.novum";
 
 // ---------------------------------------------------------------------------
-// artists (obviously fictional)
+// musicians (obviously fictional) — talent pages, with roles + openness
 // ---------------------------------------------------------------------------
 const ARTISTS = [
-  { handle: "wren_hums", name: "Wren Adeyemi", bio: "voice memos from the kitchen table. mostly at night.", interests: ["bedroom-pop", "voice-memo", "nocturnal", "lo-fi"] },
-  { handle: "ilse_draws", name: "Ilse Kováč", bio: "ink and figure studies. i draw what won't sit still.", interests: ["ink", "figure-drawing", "sketch", "raw"] },
-  { handle: "tomas_writes", name: "Tomás Rivera", bio: "fragments, mostly. i keep the receipts.", interests: ["fragment", "poem", "tender", "prose"] },
-  { handle: "junko", name: "Junko Vance", bio: "one-take covers. no second takes, that's the rule.", interests: ["acoustic-cover", "singer-songwriter", "one-take", "warm"] },
-  { handle: "film_bea", name: "Bea Sorokin", bio: "35mm, expired stock, warm light.", interests: ["film-photo", "street-photo", "warm", "nostalgic"] },
-  { handle: "otis_plays", name: "Otis Delacroix", bio: "piano at odd hours. field recordings of the room.", interests: ["instrumental", "field-recording", "jazz", "minimal"] },
-  { handle: "moss_and_rust", name: "Priya Menon", bio: "watercolor, mostly plants, mostly failing.", interests: ["watercolor", "still-life", "hopeful", "mixed-media"] },
-  { handle: "late_rap", name: "Dmitri Osei", bio: "raps over cassette beats. 2am energy.", interests: ["rap", "beat", "lo-fi", "restless"] },
+  { handle: "wren_hums", name: "Wren Adeyemi", bio: "voice memos from the kitchen table. mostly at night.", interests: ["bedroom-pop", "demo", "nocturnal", "lo-fi"], roles: ["vocalist", "songwriter"], open_to: ["collabs", "writing"], voice_note: "low alto, kitchen demos, mostly after midnight" },
+  { handle: "junko", name: "Junko Vance", bio: "one-take covers. no second takes, that's the rule.", interests: ["acoustic", "singer-songwriter", "one-take", "warm"], roles: ["vocalist", "instrumentalist"], open_to: ["features", "sessions"], voice_note: "one-take covers, guitar in hand" },
+  { handle: "late_rap", name: "Dmitri Osei", bio: "raps over cassette beats. 2am energy.", interests: ["hip-hop", "rap", "lo-fi", "restless"], roles: ["rapper", "songwriter"], open_to: ["features", "collabs"], voice_note: "2am raps over dusty beats" },
+  { handle: "otis_plays", name: "Otis Delacroix", bio: "piano at odd hours. the room is part of it.", interests: ["jazz", "piano", "instrumental", "moody"], roles: ["instrumentalist", "composer"], open_to: ["sessions"], voice_note: "piano at odd hours, room and all" },
+  { handle: "bea_beats", name: "Bea Sorokin", bio: "lo-fi beats, warm and a little broken.", interests: ["beat", "lo-fi", "instrumental", "warm"], roles: ["producer"], open_to: ["collabs", "features"], voice_note: "warm, dusty beats — looking for a voice" },
+  { handle: "ilse_keys", name: "Ilse Kováč", bio: "songs at the piano, written the same night.", interests: ["singer-songwriter", "piano", "tender", "folk"], roles: ["vocalist", "songwriter", "instrumentalist"], open_to: ["writing", "collabs"], voice_note: "songs at the piano, 2am, first drafts" },
+  { handle: "tomas_raps", name: "Tomás Rivera", bio: "freestyles and fragments. i keep the receipts.", interests: ["hip-hop", "freestyle", "spoken-word", "restless"], roles: ["rapper", "songwriter"], open_to: ["writing", "features"], voice_note: "freestyles, one mic, no punch-ins" },
+  { handle: "priya_sings", name: "Priya Menon", bio: "soul and gospel, big room, small phone.", interests: ["soul", "gospel", "vocals", "hopeful"], roles: ["vocalist"], open_to: ["features", "sessions"], voice_note: "soul & gospel, a big room voice" },
 ] as const;
 
 // ---------------------------------------------------------------------------
-// media generators
+// audio generator — a short WAV take (mono, 22.05kHz, 16-bit)
 // ---------------------------------------------------------------------------
-
-/** A short WAV melody (mono, 22.05kHz, 16-bit). Returns bytes + peaks + duration. */
 function makeWav(seed: number, seconds: number): { bytes: Buffer; peaks: number[]; duration: number } {
   const rate = 22050;
   const n = Math.floor(seconds * rate);
@@ -60,7 +58,6 @@ function makeWav(seed: number, seconds: number): { bytes: Buffer; peaks: number[
     const env = Math.exp(-t * 3) * (0.6 + 0.4 * Math.sin((i / n) * Math.PI));
     samples[i] = Math.sin(2 * Math.PI * freq * (i / rate)) * env * 0.35;
   }
-  // WAV
   const bytes = Buffer.alloc(44 + n * 2);
   bytes.write("RIFF", 0); bytes.writeUInt32LE(36 + n * 2, 4); bytes.write("WAVE", 8);
   bytes.write("fmt ", 12); bytes.writeUInt32LE(16, 16); bytes.writeUInt16LE(1, 20);
@@ -68,7 +65,6 @@ function makeWav(seed: number, seconds: number): { bytes: Buffer; peaks: number[
   bytes.writeUInt16LE(2, 32); bytes.writeUInt16LE(16, 34);
   bytes.write("data", 36); bytes.writeUInt32LE(n * 2, 40);
   for (let i = 0; i < n; i++) bytes.writeInt16LE(Math.max(-32767, Math.min(32767, samples[i]! * 32767)), 44 + i * 2);
-  // peaks (~800)
   const buckets = 800, block = Math.max(1, Math.floor(n / buckets)), peaks: number[] = [];
   let max = 0;
   for (let i = 0; i < buckets; i++) {
@@ -80,46 +76,83 @@ function makeWav(seed: number, seconds: number): { bytes: Buffer; peaks: number[
   return { bytes, peaks: norm, duration: seconds };
 }
 
-/** SVG-derived abstract webp + blurhash + dims. */
-async function makeImage(seed: number): Promise<{ bytes: Buffer; width: number; height: number; blurhash: string }> {
-  const palettes = [["#2b2a26", "#0c0c0b"], ["#3a2f24", "#0b0a09"], ["#20261a", "#0a0b08"], ["#2a2430", "#0b0a0d"]];
-  const [a, b] = palettes[seed % palettes.length]!;
-  const w = 1000, h = 800 + (seed % 3) * 150;
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}'>
-    <defs><radialGradient id='g' cx='${30 + (seed % 40)}%' cy='${25 + (seed % 45)}%' r='95%'>
-    <stop offset='0%' stop-color='${a}'/><stop offset='100%' stop-color='${b}'/></radialGradient>
-    <filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/>
-    <feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='linear' slope='0.08'/></feComponentTransfer></filter></defs>
-    <rect width='${w}' height='${h}' fill='url(#g)'/><rect width='${w}' height='${h}' filter='url(#n)' opacity='0.5'/>
-    <circle cx='${w * 0.5}' cy='${h * 0.5}' r='${120 + (seed % 5) * 30}' fill='none' stroke='#EDE8DF' stroke-opacity='0.08' stroke-width='1.5'/></svg>`;
-  const bytes = await sharp(Buffer.from(svg)).webp({ quality: 82 }).toBuffer();
-  const meta = await sharp(bytes).metadata();
-  const raw = await sharp(bytes).raw().ensureAlpha().resize(32, 32, { fit: "inside" }).toBuffer({ resolveWithObject: true });
-  const blurhash = encode(new Uint8ClampedArray(raw.data), raw.info.width, raw.info.height, 4, 3);
-  return { bytes, width: meta.width ?? w, height: meta.height ?? h, blurhash };
+/** Spread lyric lines evenly across the take, so the synced view has something to scroll. */
+function makeSegments(lyrics: string, duration: number): Json {
+  const lines = lyrics.split("\n").map((l) => l.trim()).filter(Boolean);
+  if (lines.length === 0) return [];
+  const seg = duration / lines.length;
+  return lines.map((text, i) => ({
+    start: Math.round(i * seg * 100) / 100,
+    end: Math.round((i + 1) * seg * 100) / 100,
+    text,
+  })) as unknown as Json;
 }
 
-// ---------------------------------------------------------------------------
-// piece specs (~40 across artists + media)
-// ---------------------------------------------------------------------------
-type Spec = { artist: number; medium: "sound" | "image" | "words"; title?: string; caption?: string; body?: string; tags: string[]; afterOf?: number };
-const WORDS = [
-  "i kept the receipt from the night\nwe didn't say anything —\nproof we were both there,\nboth quiet, both staying.",
-  "the kettle again.\nsteam on the cold window\nspelling nothing.",
-  "you left the porch light on\nlike a question\nyou already knew the answer to.",
-  "practice room, 2am.\nthe piano remembers\nmore than i do.",
-  "small rain. the street\nturns the colour of a photograph\nno one took.",
+// fabricated, original lyric snippets (no real/copyrighted text anywhere)
+const LYRICS = [
+  "if the kitchen light is still on\ni'm still awake, still humming this\nsome nights the quiet does the singing",
+  "kept the receipt from the night we said nothing\nproof we were both there, both staying\nboth pretending it was fine",
+  "you left the porch light on\nlike a question you already knew\nthe answer to, and stayed anyway",
+  "small rain on the avenue\nthe street turns the colour\nof a photograph no one took",
+  "call it a demo, call it a start\ni'll fix it later, i always say\nthen leave it exactly like this",
+  "2am and the piano remembers\nmore than i do, more than i'd admit\nso i let it lead",
 ];
+
+// ---------------------------------------------------------------------------
+// track specs (~30 across musicians + kinds)
+// ---------------------------------------------------------------------------
+type Kind = "original" | "cover" | "beat" | "freestyle";
+type Spec = {
+  artist: number;
+  kind: Kind;
+  hasVocals?: boolean;
+  title?: string;
+  caption?: string;
+  lyrics?: number; // index into LYRICS
+  synced?: boolean;
+  coverTitle?: string;
+  coverArtist?: string;
+  tags: string[];
+  afterOf?: number;
+};
+
 function buildSpecs(): Spec[] {
   const s: Spec[] = [];
-  // sound (hero) — ~14
-  for (let i = 0; i < 14; i++) s.push({ artist: [0, 3, 5, 7][i % 4]!, medium: "sound", title: i % 3 === 0 ? undefined : ["late demo", "yellow (one take)", "kitchen tape", "room 4"][i % 4], caption: i % 2 ? "one take, kept the mistakes." : undefined, tags: [["bedroom-pop", "demo"], ["acoustic-cover", "warm"], ["instrumental", "field-recording"], ["rap", "beat"]][i % 4]! });
-  // image — ~14
-  for (let i = 0; i < 14; i++) s.push({ artist: [1, 4, 6][i % 3]!, medium: "image", title: i % 4 === 0 ? ["morning, unmade", "expired 200", "still, failing"][i % 3] : undefined, tags: [["ink", "figure-drawing"], ["film-photo", "warm"], ["watercolor", "still-life"]][i % 3]! });
-  // words — ~8
-  for (let i = 0; i < 8; i++) s.push({ artist: 2, medium: "words", body: WORDS[i % WORDS.length], tags: ["fragment", i % 2 ? "tender" : "nostalgic"] });
-  // words+sound pairing — ~4
-  for (let i = 0; i < 4; i++) s.push({ artist: 3, medium: "sound", title: "cover w/ words", caption: "lyric + demo", body: WORDS[(i + 2) % WORDS.length], tags: ["acoustic-cover", "lyrics"] });
+  // originals with vocals + lyrics (some synced)
+  s.push({ artist: 0, kind: "original", title: "kitchen light", caption: "one take, kept the mistakes.", lyrics: 0, synced: true, tags: ["bedroom-pop", "demo", "nocturnal"] });
+  s.push({ artist: 0, kind: "original", lyrics: 2, tags: ["bedroom-pop", "tender"] });
+  s.push({ artist: 0, kind: "original", title: "porch light", lyrics: 2, synced: true, tags: ["lo-fi", "warm"] });
+  s.push({ artist: 5, kind: "original", title: "first draft", caption: "written the same night.", lyrics: 5, synced: true, tags: ["singer-songwriter", "piano", "tender"] });
+  s.push({ artist: 5, kind: "original", lyrics: 3, tags: ["folk", "melancholy"] });
+  s.push({ artist: 7, kind: "original", title: "big room", lyrics: 4, synced: true, tags: ["soul", "gospel", "hopeful"] });
+  s.push({ artist: 7, kind: "original", lyrics: 0, tags: ["soul", "vocals", "warm"] });
+  // covers (attribution set; vocals; no pasted lyrics — the transcribe→confirm flow fills those)
+  s.push({ artist: 1, kind: "cover", title: "yellow (one take)", caption: "no second takes.", coverTitle: "Yellow", coverArtist: "Coldplay", tags: ["acoustic", "one-take", "raw"] });
+  s.push({ artist: 1, kind: "cover", coverTitle: "Jolene", coverArtist: "Dolly Parton", tags: ["acoustic", "vocals"] });
+  s.push({ artist: 1, kind: "cover", title: "the night we met", coverTitle: "The Night We Met", coverArtist: "Lord Huron", tags: ["acoustic", "melancholy"] });
+  s.push({ artist: 5, kind: "cover", coverTitle: "Skinny Love", coverArtist: "Bon Iver", tags: ["singer-songwriter", "tender"] });
+  s.push({ artist: 7, kind: "cover", title: "a change is gonna come", coverTitle: "A Change Is Gonna Come", coverArtist: "Sam Cooke", tags: ["soul", "gospel"] });
+  // freestyles / raps with lyrics
+  s.push({ artist: 2, kind: "freestyle", title: "cassette freestyle", caption: "off the top, one mic.", lyrics: 1, tags: ["hip-hop", "freestyle", "one-take"], afterOf: 18 });
+  s.push({ artist: 2, kind: "original", lyrics: 4, tags: ["hip-hop", "rap", "restless"] });
+  s.push({ artist: 2, kind: "freestyle", lyrics: 3, tags: ["hip-hop", "freestyle"], afterOf: 19 });
+  s.push({ artist: 6, kind: "freestyle", title: "receipts", lyrics: 1, synced: true, tags: ["hip-hop", "spoken-word", "restless"] });
+  s.push({ artist: 6, kind: "original", lyrics: 5, tags: ["hip-hop", "rap", "moody"] });
+  // instrumentals + beats (no vocals, no lyrics)
+  s.push({ artist: 3, kind: "original", hasVocals: false, title: "room 4", caption: "the room is part of it.", tags: ["jazz", "piano", "instrumental"] });
+  s.push({ artist: 3, kind: "original", hasVocals: false, tags: ["jazz", "instrumental", "moody"] });
+  s.push({ artist: 4, kind: "beat", title: "dusty 74", tags: ["beat", "lo-fi", "instrumental"] });
+  s.push({ artist: 4, kind: "beat", tags: ["beat", "lo-fi"] });
+  s.push({ artist: 4, kind: "beat", title: "warm loop", caption: "looking for a voice.", tags: ["beat", "warm", "instrumental"] });
+  // a few more to round out ~30, spread across artists
+  s.push({ artist: 0, kind: "cover", coverTitle: "River", coverArtist: "Joni Mitchell", tags: ["acoustic", "nocturnal"] });
+  s.push({ artist: 1, kind: "original", title: "b-side", lyrics: 4, tags: ["singer-songwriter", "demo"] });
+  s.push({ artist: 5, kind: "original", lyrics: 2, synced: true, tags: ["folk", "tender"] });
+  s.push({ artist: 7, kind: "cover", coverTitle: "Feeling Good", coverArtist: "Nina Simone", tags: ["soul", "vocals"] });
+  s.push({ artist: 2, kind: "original", title: "cassette tape", lyrics: 0, tags: ["hip-hop", "lo-fi"] });
+  s.push({ artist: 6, kind: "freestyle", lyrics: 3, tags: ["hip-hop", "freestyle", "one-take"] });
+  s.push({ artist: 3, kind: "original", hasVocals: false, title: "late practice", tags: ["jazz", "piano", "nocturnal"] });
+  s.push({ artist: 4, kind: "beat", title: "broken tape", tags: ["beat", "lo-fi", "moody"] });
   return s;
 }
 
@@ -131,7 +164,7 @@ async function main() {
     if (u.email?.endsWith(`@${SEED_DOMAIN}`)) await db.auth.admin.deleteUser(u.id);
   }
 
-  console.log("→ creating artists…");
+  console.log("→ creating musicians…");
   const ids: string[] = [];
   for (const a of ARTISTS) {
     const { data, error } = await db.auth.admin.createUser({
@@ -144,39 +177,43 @@ async function main() {
     const { error: pErr } = await db.from("profiles").insert({
       id: data.user.id, handle: a.handle, display_name: a.name, bio: a.bio,
       interests: a.interests as unknown as string[], onboarded: true,
+      roles: a.roles as unknown as string[], open_to: a.open_to as unknown as string[],
+      voice_note: a.voice_note,
     });
     if (pErr) throw new Error(`profile ${a.handle}: ${pErr.message}`);
   }
 
-  console.log("→ posting pieces…");
+  console.log("→ posting tracks…");
   const specs = buildSpecs();
   const pieceIds: string[] = [];
   let n = 0;
   for (const spec of specs) {
     const artistId = ids[spec.artist]!;
     const pieceId = randomUUID();
-    const afterId = spec.afterOf != null ? pieceIds[spec.afterOf] : (n % 9 === 8 && pieceIds.length ? pieceIds[n % pieceIds.length] : undefined);
+    const afterId = spec.afterOf != null ? pieceIds[spec.afterOf] : (n % 11 === 10 && pieceIds.length ? pieceIds[n % pieceIds.length] : undefined);
+    const hasVocals = spec.kind === "beat" ? false : (spec.hasVocals ?? true);
+    const lyricText = spec.lyrics != null ? LYRICS[spec.lyrics]! : null;
+    const { bytes, peaks, duration } = makeWav(n + 1, 8 + (n % 5) * 4);
 
     const { error: pieceErr } = await db.from("pieces").insert({
-      id: pieceId, artist_id: artistId, medium: spec.medium,
-      title: spec.title ?? null, caption: spec.caption ?? null, body: spec.body ?? null,
+      id: pieceId, artist_id: artistId, medium: "sound",
+      track_kind: spec.kind, has_vocals: hasVocals,
+      title: spec.title ?? null, caption: spec.caption ?? null,
+      cover_of_title: spec.coverTitle ?? null, cover_of_artist: spec.coverArtist ?? null,
+      lyrics: lyricText,
+      lyrics_source: lyricText ? "written" : null,
+      lyric_segments: lyricText && spec.synced ? makeSegments(lyricText, duration) : null,
+      show_lyrics: true,
       tags: spec.tags, visibility: "public", attested: true, status: "active",
       sequence_no: 0, after_piece_id: afterId ?? null,
       published_at: new Date(Date.now() - n * 37 * 60_000).toISOString(),
     });
-    if (pieceErr) throw new Error(`piece ${n}: ${pieceErr.message}`);
+    if (pieceErr) throw new Error(`track ${n}: ${pieceErr.message}`);
 
-    if (spec.medium === "sound") {
-      const { bytes, peaks, duration } = makeWav(n + 1, 8 + (n % 5) * 4);
-      const path = `${artistId}/${pieceId}/audio.wav`;
-      await db.storage.from("media").upload(path, bytes, { contentType: "audio/wav", upsert: true });
-      await db.from("piece_media").insert({ piece_id: pieceId, kind: "audio", storage_path: path, duration_seconds: duration, peaks, mime: "audio/wav", bytes: bytes.byteLength, position: 0 });
-    } else if (spec.medium === "image") {
-      const { bytes, width, height, blurhash } = await makeImage(n + 3);
-      const path = `${artistId}/${pieceId}/0.webp`;
-      await db.storage.from("media").upload(path, bytes, { contentType: "image/webp", upsert: true });
-      await db.from("piece_media").insert({ piece_id: pieceId, kind: "image", storage_path: path, width, height, blurhash, mime: "image/webp", bytes: bytes.byteLength, position: 0 });
-    }
+    const path = `${artistId}/${pieceId}/audio.wav`;
+    await db.storage.from("media").upload(path, bytes, { contentType: "audio/wav", upsert: true });
+    await db.from("piece_media").insert({ piece_id: pieceId, kind: "audio", storage_path: path, duration_seconds: duration, peaks, mime: "audio/wav", bytes: bytes.byteLength, position: 0 });
+
     pieceIds.push(pieceId);
     n++;
   }
@@ -194,14 +231,14 @@ async function main() {
     const owner = specs[i]!.artist;
     if (ids[owner] !== reactor) await db.from("reactions").upsert({ piece_id: pieceIds[i]!, user_id: reactor, kind: REACT[i % 4]! });
   }
-  const { data: coll } = await db.from("collections").insert({ owner_id: ids[4]!, title: "warm light, kept quiet", slug: "warm-light", description: "the ones i return to when it's late." }).select("id").single();
+  const { data: coll } = await db.from("collections").insert({ owner_id: ids[4]!, title: "on repeat, late", slug: "on-repeat-late", description: "the takes i come back to when it's quiet." }).select("id").single();
   if (coll) for (const pid of pieceIds.filter((_, i) => i % 4 === 0).slice(0, 8)) await db.from("collection_items").upsert({ collection_id: coll.id, piece_id: pid });
 
   console.log("→ refreshing recommendations…");
   await db.rpc("refresh_recommendations");
 
-  console.log(`\n✓ seeded ${ARTISTS.length} artists · ${pieceIds.length} pieces`);
-  console.log("  sign up with your own email to explore as a viewer.");
+  console.log(`\n✓ seeded ${ARTISTS.length} musicians · ${pieceIds.length} tracks`);
+  console.log("  sign up with your own email to explore as a listener.");
   console.log("  to grant yourself admin: update profiles set role='admin' where handle='<you>';");
 }
 

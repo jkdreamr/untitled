@@ -8,6 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionUser } from "@/lib/data/profiles";
 import { getMux } from "@/lib/mux/client";
 import { ALL_TAGS } from "@/lib/taxonomy";
+import { ARTIST_ROLES, OPEN_TO } from "@/lib/types";
 
 const linkSchema = z.object({
   label: z.string().trim().max(40),
@@ -25,6 +26,9 @@ const profileSchema = z.object({
   bio: z.string().trim().max(160).optional().default(""),
   links: z.array(linkSchema).max(6).default([]),
   interests: z.array(z.string()).max(15).refine((t) => t.every((x) => (ALL_TAGS as readonly string[]).includes(x))),
+  roles: z.array(z.string()).max(8).default([]).refine((t) => t.every((x) => (ARTIST_ROLES as readonly string[]).includes(x)), "unknown role"),
+  open_to: z.array(z.string()).max(4).default([]).refine((t) => t.every((x) => (OPEN_TO as readonly string[]).includes(x)), "unknown option"),
+  voice_note: z.string().trim().max(80).optional().default(""),
   quiet_mode: z.boolean(),
   avatar_path: z.string().max(200).nullable().optional(),
 });
@@ -48,6 +52,9 @@ export async function updateProfile(input: z.infer<typeof profileSchema>): Promi
       bio: parsed.data.bio || null,
       links: parsed.data.links,
       interests: parsed.data.interests,
+      roles: parsed.data.roles,
+      open_to: parsed.data.open_to,
+      voice_note: parsed.data.voice_note || null,
       quiet_mode: parsed.data.quiet_mode,
       ...(parsed.data.avatar_path !== undefined ? { avatar_path: parsed.data.avatar_path } : {}),
     })

@@ -4,6 +4,7 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { signOne } from "@/lib/data/cards";
 import { getPiece } from "@/lib/data/pieces";
+import { hasSupabasePublicEnv } from "@/lib/env";
 import type { Tables } from "@/lib/supabase/types";
 import type { PieceCard } from "@/lib/types";
 import type { User } from "@supabase/supabase-js";
@@ -24,6 +25,9 @@ export interface PublicProfile {
   avatar_url: string | null;
   quiet_mode: boolean;
   role: Profile["role"];
+  roles: string[];
+  open_to: string[];
+  voice_note: string | null;
   /** null when quiet mode and not self */
   follower_count: number | null;
   following_count: number | null;
@@ -35,6 +39,8 @@ export interface PublicProfile {
 
 /** The authenticated auth user (verified against Supabase Auth). Cached per request. */
 export const getSessionUser = cache(async (): Promise<User | null> => {
+  // Not configured yet → treat everyone as a guest (no network call, no throw).
+  if (!hasSupabasePublicEnv()) return null;
   const supabase = await createClient();
   const {
     data: { user },
@@ -56,7 +62,7 @@ export async function getProfileByHandle(handle: string): Promise<PublicProfile 
   const { data: p } = await supabase
     .from("profiles")
     .select(
-      "id, handle, display_name, bio, links, avatar_path, quiet_mode, role, follower_count, following_count, pinned_piece_id, created_at",
+      "id, handle, display_name, bio, links, avatar_path, quiet_mode, role, roles, open_to, voice_note, follower_count, following_count, pinned_piece_id, created_at",
     )
     .eq("handle", handle)
     .maybeSingle();
@@ -91,6 +97,9 @@ export async function getProfileByHandle(handle: string): Promise<PublicProfile 
     avatar_url,
     quiet_mode: p.quiet_mode,
     role: p.role,
+    roles: p.roles ?? [],
+    open_to: p.open_to ?? [],
+    voice_note: p.voice_note,
     follower_count: masked ? null : p.follower_count,
     following_count: masked ? null : p.following_count,
     is_self: isSelf,

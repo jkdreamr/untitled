@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
 import { SoundBlock } from "@/components/piece/sound-block";
-import { WordsBlock } from "@/components/piece/words-block";
-import { ImageRoll } from "@/components/piece/image-roll";
+import { LyricsBlock } from "@/components/piece/lyrics-block";
 import { VideoBlock } from "@/components/piece/video-block";
+import { TrackKindTag, CoverOf } from "@/components/piece/track-kind-tag";
 import { ReactionBar } from "@/components/piece/reaction-bar";
 import { CollectButton } from "@/components/piece/collect-button";
 import { CopyLink } from "@/components/ui/copy-link";
@@ -51,8 +51,10 @@ export function PieceCard({
           <Link href={`/${card.artist.handle}`} className="text-sm text-bone hover:underline">
             {card.artist.display_name}
           </Link>
-          <p className="meta truncate">
-            @{card.artist.handle} · <span className="meta-caps">{card.medium}</span>
+          <p className="meta flex items-center gap-1.5 truncate">
+            <span className="truncate">@{card.artist.handle}</span>
+            <span className="meta-caps">{card.medium === "video" ? "video" : "audio"}</span>
+            <TrackKindTag kind={card.track_kind} />
           </p>
         </div>
         <Link href={href} className="meta shrink-0 text-bone-32 hover:text-bone" title={formatPieceDate(card.published_at)}>
@@ -63,14 +65,10 @@ export function PieceCard({
       {/* media */}
       <div className="space-y-4">
         {card.medium === "sound" && track && <SoundBlock track={track} />}
-        {card.medium === "image" && (
-          <ImageRoll media={card.media} priority={priority} alt={card.caption ?? `${label} by @${card.artist.handle}`} />
-        )}
-        {card.medium === "video" && <VideoBlock playbackId={card.mux_playback_id} title={label} aspect={aspect} />}
-        {card.medium === "words" && card.body && <WordsBlock body={card.body} clamp />}
-        {/* pairings: lyric with its demo / photo */}
-        {card.medium !== "words" && card.body && (
-          <WordsBlock body={card.body} clamp className="text-[1.1rem] sm:text-[1.2rem]" />
+        {card.medium === "video" && <VideoBlock playbackId={card.mux_playback_id} title={label} aspect={aspect} priority={priority} />}
+        {/* a lyric teaser under the take */}
+        {card.lyrics && (
+          <LyricsBlock lyrics={card.lyrics} clamp className="text-[1.1rem] sm:text-[1.2rem]" />
         )}
       </div>
 
@@ -83,6 +81,12 @@ export function PieceCard({
             <h2 className="font-mono text-[0.95rem] tracking-tight text-bone-64 group-hover:text-bone">{label}</h2>
           )}
         </Link>
+        <CoverOf
+          title={card.cover_of_title}
+          artist={card.cover_of_artist}
+          verb={card.track_kind === "cover" ? "cover of" : "over"}
+          className="mt-1"
+        />
         <p className="meta mt-1">{formatPieceDate(card.published_at)}</p>
       </div>
 

@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
-import { PUBLIC_ENV } from "@/lib/env";
+import { EFFECTIVE_SUPABASE_URL } from "@/lib/env";
 import { SERVER_ENV } from "@/lib/env.server";
 import type { Database } from "@/lib/supabase/types";
 
@@ -17,7 +17,7 @@ import type { Database } from "@/lib/supabase/types";
 export function createAdminClient() {
   if (!SERVER_ENV.SUPABASE_SERVICE_ROLE_KEY) return null;
   return createSupabaseClient<Database>(
-    PUBLIC_ENV.SUPABASE_URL,
+    EFFECTIVE_SUPABASE_URL,
     SERVER_ENV.SUPABASE_SERVICE_ROLE_KEY,
     { auth: { autoRefreshToken: false, persistSession: false } },
   );

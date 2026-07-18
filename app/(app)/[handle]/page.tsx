@@ -7,17 +7,18 @@ import { ReportDialog } from "@/components/piece/report-dialog";
 import { PieceCard } from "@/components/piece/piece-card";
 import { FeedItems } from "@/components/feed/feed-items";
 import { FeedStream } from "@/components/feed/feed-stream";
+import { RoleChips, OpenToBadges, VoiceNote } from "@/components/piece/talent-chips";
 import { buttonClasses } from "@/components/ui/button";
 import { getProfileByHandle, getSessionUser } from "@/lib/data/profiles";
 import { getProfilePieces } from "@/lib/data/pieces";
 import { loadMoreProfile } from "@/lib/profile/actions";
 import { cardsToTracks } from "@/lib/tracks";
 import { cn, formatCount } from "@/lib/utils";
-import type { Medium } from "@/lib/types";
+import type { TrackKind } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-const MEDIA: (Medium | "all")[] = ["all", "sound", "image", "video", "words"];
+const KINDS: (TrackKind | "all")[] = ["all", "original", "cover", "freestyle", "beat"];
 
 export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }): Promise<Metadata> {
   const { handle } = await params;
@@ -31,15 +32,15 @@ export default async function ProfilePage({
   searchParams,
 }: {
   params: Promise<{ handle: string }>;
-  searchParams: Promise<{ medium?: string }>;
+  searchParams: Promise<{ kind?: string }>;
 }) {
   const { handle } = await params;
-  const { medium: mediumRaw } = await searchParams;
+  const { kind: kindRaw } = await searchParams;
   const profile = await getProfileByHandle(handle);
   if (!profile) notFound();
 
-  const activeMedium = (MEDIA.includes(mediumRaw as Medium) ? mediumRaw : "all") as Medium | "all";
-  const filter = activeMedium === "all" ? null : activeMedium;
+  const activeKind = (KINDS.includes(kindRaw as TrackKind) ? kindRaw : "all") as TrackKind | "all";
+  const filter = activeKind === "all" ? null : activeKind;
 
   const [{ cards, nextCursor }, user] = await Promise.all([
     getProfilePieces(profile.handle, filter),
@@ -58,7 +59,10 @@ export default async function ProfilePage({
             {profile.role === "admin" && <span className="meta rounded-full border border-bone-16 px-2 py-0.5 text-bone-46">team</span>}
           </div>
           <p className="meta mt-0.5">@{profile.handle}</p>
+          <RoleChips roles={profile.roles} className="mt-2" />
+          {profile.voice_note && <VoiceNote note={profile.voice_note} className="mt-2" />}
           {profile.bio && <p className="mt-3 max-w-prose text-sm leading-relaxed text-bone-64">{profile.bio}</p>}
+          <OpenToBadges openTo={profile.open_to} className="mt-3" />
 
           {profile.links.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-3">
@@ -95,22 +99,23 @@ export default async function ProfilePage({
       </header>
 
       {/* pinned */}
-      {profile.pinned && activeMedium === "all" && (
+      {profile.pinned && activeKind === "all" && (
         <section className="mt-10">
           <p className="meta meta-caps mb-2 text-lime">pinned</p>
           <PieceCard card={profile.pinned} authed={authed} />
         </section>
       )}
 
-      {/* filter */}
-      <nav className="mt-8 flex gap-1 border-b border-bone-10 pb-3">
-        {MEDIA.map((m) => (
+      {/* discography filter (by track kind) */}
+      <nav aria-label="filter by track kind" className="no-scrollbar mt-8 flex gap-1 overflow-x-auto border-b border-bone-10 pb-3">
+        {KINDS.map((k) => (
           <Link
-            key={m}
-            href={m === "all" ? `/${profile.handle}` : `/${profile.handle}?medium=${m}`}
-            className={cn("rounded-full px-3 py-1.5 text-sm transition-colors", activeMedium === m ? "text-bone" : "text-bone-46 hover:text-bone")}
+            key={k}
+            href={k === "all" ? `/${profile.handle}` : `/${profile.handle}?kind=${k}`}
+            aria-current={activeKind === k ? "page" : undefined}
+            className={cn("shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-sm transition-colors", activeKind === k ? "text-lime" : "text-bone-64 hover:text-bone")}
           >
-            {m}
+            {k}
           </Link>
         ))}
       </nav>
@@ -118,7 +123,7 @@ export default async function ProfilePage({
       {/* work */}
       <div className="mt-2">
         {cards.length === 0 ? (
-          <p className="py-16 text-center text-sm text-bone-32">
+          <p className="py-16 text-center text-sm text-bone-52">
             {profile.is_self ? "you haven't posted here yet. post the first take." : "nothing here yet."}
           </p>
         ) : (

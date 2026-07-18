@@ -2,7 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/lib/supabase/types";
-import type { PieceCard, MediaItem } from "@/lib/types";
+import type { PieceCard, MediaItem, LyricSegment } from "@/lib/types";
 
 const MEDIA_TTL = 60 * 60; // 1h signed URLs
 const AVATAR_TTL = 60 * 60;
@@ -28,7 +28,14 @@ export function parseCard(json: Json | null): PieceCard | null {
         } as MediaItem;
       })
     : [];
-  return { ...(c as unknown as PieceCard), media };
+  // Confirmed synced lyrics: keep only well-formed {start,end,text} lines.
+  const lyric_segments: LyricSegment[] = Array.isArray(c.lyric_segments)
+    ? (c.lyric_segments as unknown[])
+        .map((s) => s as Record<string, unknown>)
+        .filter((s) => s && typeof s.text === "string")
+        .map((s) => ({ start: Number(s.start ?? 0), end: Number(s.end ?? 0), text: String(s.text) }))
+    : [];
+  return { ...(c as unknown as PieceCard), media, lyric_segments };
 }
 
 /**

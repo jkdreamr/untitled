@@ -5,6 +5,7 @@ import { updateProfile, deleteAccount } from "@/lib/account/actions";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { TAXONOMY } from "@/lib/taxonomy";
+import { ARTIST_ROLES, OPEN_TO } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 interface LinkRow { label: string; url: string }
@@ -18,6 +19,9 @@ export function SettingsForm({
     bio: string;
     links: LinkRow[];
     interests: string[];
+    roles: string[];
+    open_to: string[];
+    voice_note: string;
     quiet_mode: boolean;
     handle: string;
   };
@@ -27,6 +31,9 @@ export function SettingsForm({
   const [bio, setBio] = useState(initial.bio);
   const [links, setLinks] = useState<LinkRow[]>(initial.links);
   const [interests, setInterests] = useState<string[]>(initial.interests);
+  const [roles, setRoles] = useState<string[]>(initial.roles);
+  const [openTo, setOpenTo] = useState<string[]>(initial.open_to);
+  const [voiceNote, setVoiceNote] = useState(initial.voice_note);
   const [quiet, setQuiet] = useState(initial.quiet_mode);
   const [avatarPath, setAvatarPath] = useState<string | null | undefined>(undefined);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(avatarUrl);
@@ -53,6 +60,12 @@ export function SettingsForm({
   function toggleInterest(t: string) {
     setInterests((p) => (p.includes(t) ? p.filter((x) => x !== t) : p.length < 15 ? [...p, t] : p));
   }
+  function toggleRole(r: string) {
+    setRoles((p) => (p.includes(r) ? p.filter((x) => x !== r) : p.length < 8 ? [...p, r] : p));
+  }
+  function toggleOpen(o: string) {
+    setOpenTo((p) => (p.includes(o) ? p.filter((x) => x !== o) : p.length < 4 ? [...p, o] : p));
+  }
 
   async function save() {
     setSaving(true);
@@ -62,6 +75,9 @@ export function SettingsForm({
       bio,
       links: links.filter((l) => l.url.trim()),
       interests,
+      roles,
+      open_to: openTo,
+      voice_note: voiceNote,
       quiet_mode: quiet,
       ...(avatarPath !== undefined ? { avatar_path: avatarPath } : {}),
     });
@@ -117,6 +133,31 @@ export function SettingsForm({
         </div>
       </Field>
 
+      <Field label="what you do">
+        <div className="flex flex-wrap gap-2">
+          {ARTIST_ROLES.map((r) => (
+            <button key={r} onClick={() => toggleRole(r)} className={cn("rounded-full border px-3 py-1 font-mono text-[0.75rem] transition-colors", roles.includes(r) ? "border-lime bg-lime/10 text-lime" : "border-bone-16 text-bone-64 hover:text-bone")}>
+              {r}
+            </button>
+          ))}
+        </div>
+      </Field>
+
+      <Field label="voice note">
+        <input value={voiceNote} onChange={(e) => setVoiceNote(e.target.value.slice(0, 80))} placeholder="one line on how you sound" maxLength={80} className={inputCls} />
+        <span className="meta mt-1 block text-bone-32">{voiceNote.length}/80 · shown in space mono on your page</span>
+      </Field>
+
+      <Field label="open to">
+        <div className="flex flex-wrap gap-2">
+          {OPEN_TO.map((o) => (
+            <button key={o} onClick={() => toggleOpen(o)} className={cn("rounded-full border px-3 py-1 font-mono text-[0.75rem] transition-colors", openTo.includes(o) ? "border-lime bg-lime/10 text-lime" : "border-bone-16 text-bone-64 hover:text-bone")}>
+              {o}
+            </button>
+          ))}
+        </div>
+      </Field>
+
       <Field label="interests">
         <div className="max-h-64 space-y-4 overflow-y-auto pr-1">
           {TAXONOMY.map((g) => (
@@ -124,7 +165,7 @@ export function SettingsForm({
               <p className="meta meta-caps mb-2 text-bone-32">{g.label}</p>
               <div className="flex flex-wrap gap-2">
                 {g.tags.map((t) => (
-                  <button key={t} onClick={() => toggleInterest(t)} className={cn("rounded-full border px-3 py-1 font-mono text-[0.75rem] transition-colors", interests.includes(t) ? "border-lime bg-lime/10 text-lime" : "border-bone-16 text-bone-46 hover:text-bone")}>
+                  <button key={t} onClick={() => toggleInterest(t)} className={cn("rounded-full border px-3 py-1 font-mono text-[0.75rem] transition-colors", interests.includes(t) ? "border-lime bg-lime/10 text-lime" : "border-bone-16 text-bone-64 hover:text-bone")}>
                     {t}
                   </button>
                 ))}

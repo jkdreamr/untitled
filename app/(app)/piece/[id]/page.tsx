@@ -3,9 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Avatar } from "@/components/ui/avatar";
 import { SoundBlock } from "@/components/piece/sound-block";
-import { ImageRoll } from "@/components/piece/image-roll";
 import { VideoBlock } from "@/components/piece/video-block";
-import { WordsBlock } from "@/components/piece/words-block";
+import { TrackLyrics } from "@/components/piece/track-lyrics";
+import { LyricConfirm } from "@/components/piece/lyric-confirm";
+import { TrackKindTag, CoverOf } from "@/components/piece/track-kind-tag";
 import { ReactionBar } from "@/components/piece/reaction-bar";
 import { CollectButton } from "@/components/piece/collect-button";
 import { CopyLink } from "@/components/ui/copy-link";
@@ -13,7 +14,9 @@ import { FollowButton } from "@/components/piece/follow-button";
 import { CommentSection } from "@/components/piece/comment-section";
 import { ReportDialog } from "@/components/piece/report-dialog";
 import { ViewPing } from "@/components/piece/view-ping";
-import { getPiece, getPieceComments, getPieceReactions, getPiecesAfter } from "@/lib/data/pieces";
+import { ResultCard } from "@/components/search/result-card";
+import { getPiece, getPieceComments, getPieceReactions, getPiecesAfter, getSimilarTracks } from "@/lib/data/pieces";
+import { fetchPendingTranscription } from "@/lib/lyrics/actions";
 import { getSessionUser, getCurrentProfile } from "@/lib/data/profiles";
 import { pieceTitle, formatPieceDate, formatDuration } from "@/lib/utils";
 import type { PlayerTrack } from "@/components/player/player-context";
@@ -26,7 +29,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const card = await getPiece(id);
   if (!card) return { title: "piece" };
   const label = pieceTitle(card.title, card.sequence_no);
-  const desc = card.caption ?? card.body?.slice(0, 140) ?? `a ${card.medium} piece by @${card.artist.handle}`;
+  const kind = card.track_kind === "original" ? "track" : card.track_kind;
+  const desc = card.caption ?? card.lyrics?.slice(0, 140) ?? `a ${kind} by @${card.artist.handle}`;
   return { title: `${label} · @${card.artist.handle}`, description: desc };
 }
 
@@ -35,14 +39,17 @@ export default async function PiecePage({ params }: { params: Promise<{ id: stri
   const card = await getPiece(id);
   if (!card) notFound();
 
-  const [reactions, comments, afters, user, profile] = await Promise.all([
+  const [reactions, comments, afters, similar, user, profile] = await Promise.all([
     getPieceReactions(id),
     getPieceComments(id),
     getPiecesAfter(id),
+    getSimilarTracks(id, 6),
     getSessionUser(),
     getCurrentProfile(),
   ]);
   const authed = !!user;
+  // Owner-only: is there a transcription waiting to be reviewed?
+  const pending = card.viewer.is_owner ? await fetchPendingTranscription(id) : null;
 
   const audio = card.media.find((m) => m.kind === "audio");
   const track: PlayerTrack | null = audio?.url
@@ -79,12 +86,7 @@ export default async function PiecePage({ params }: { params: Promise<{ id: stri
       {/* media */}
       <div className="space-y-4">
         {card.medium === "sound" && track && <SoundBlock track={track} tall />}
-        {card.medium === "image" && (
-          <ImageRoll media={card.media} priority alt={card.caption ?? `${pieceTitle(card.title, card.sequence_no)} by @${card.artist.handle}`} />
-        )}
-        {card.medium === "video" && <VideoBlock playbackId={card.mux_playback_id} title={pieceTitle(card.title, card.sequence_no)} aspect={aspect} />}
-        {card.medium === "words" && card.body && <WordsBlock body={card.body} />}
-        {card.medium !== "words" && card.body && <WordsBlock body={card.body} className="text-[1.15rem]" />}
+        {card.medium === "video" && <VideoBlock playbackId={card.mux_playback_id} title={pieceTitle(card.title, card.sequence_no)} aspect={aspect} priority />}
       </div>
 
       {/* title + meta */}
@@ -94,10 +96,19 @@ export default async function PiecePage({ params }: { params: Promise<{ id: stri
         ) : (
           <h1 className="font-mono text-lg text-bone-64">untitled no. {card.sequence_no}</h1>
         )}
-        <p className="meta mt-1">
-          {formatPieceDate(card.published_at)} · <span className="meta-caps">{card.medium}</span>
-          {audio?.duration_seconds ? ` · ${formatDuration(audio.duration_seconds)}` : ""}
-        </p>
+        <div className="mt-1 flex items-center gap-2">
+          <p className="meta">
+            {formatPieceDate(card.published_at)} · <span className="meta-caps">{card.medium === "video" ? "video" : "audio"}</span>
+            {audio?.duration_seconds ? ` · ${formatDuration(audio.duration_seconds)}` : ""}
+          </p>
+          <TrackKindTag kind={card.track_kind} />
+        </div>
+        <CoverOf
+          title={card.cover_of_title}
+          artist={card.cover_of_artist}
+          verb={card.track_kind === "cover" ? "cover of" : "over"}
+          className="mt-1.5"
+        />
       </div>
 
       {card.caption && <p className="mt-4 max-w-prose leading-relaxed text-bone-64">{card.caption}</p>}
@@ -121,6 +132,10 @@ export default async function PiecePage({ params }: { params: Promise<{ id: stri
           ))}
         </div>
       )}
+
+      {/* lyrics — synced for audio, a toggle for video; owner reviews transcription first */}
+      {pending && <LyricConfirm pieceId={card.id} pending={pending} />}
+      <TrackLyrics card={card} />
 
       {/* actions */}
       <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-y border-bone-10 py-5">
@@ -151,6 +166,18 @@ export default async function PiecePage({ params }: { params: Promise<{ id: stri
             ))}
           </div>
         </div>
+      )}
+
+      {/* sounds like */}
+      {similar.length > 0 && (
+        <section className="mt-10">
+          <h2 className="meta meta-caps mb-3 text-bone-52">sounds like</h2>
+          <div className="space-y-1">
+            {similar.map((c) => (
+              <ResultCard key={c.id} card={c} />
+            ))}
+          </div>
+        </section>
       )}
 
       {/* comments */}

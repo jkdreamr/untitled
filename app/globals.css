@@ -325,6 +325,17 @@
     outline-offset: 2px;
   }
 
+  /* Form controls must always show a visible focus ring for keyboard users, even
+     though inputs set `outline-none` to drop the UA default. Type+pseudo
+     specificity (0,1,1) beats the `.outline-none` utility (0,1,0), so the lime
+     ring wins app-wide while the per-input lime border stays a secondary cue. */
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: 2px solid var(--color-lime);
+    outline-offset: 2px;
+  }
+
   .stagger-rise > * {
     animation: rise-in var(--dur-slow) var(--ease-out) both;
   }
