@@ -1,12 +1,10 @@
 import { WaveformStatic } from "@/components/media/waveform-static";
-import { formatDuration, formatPieceDate, pieceTitle } from "@/lib/utils";
+import { formatDuration, pieceTitle } from "@/lib/utils";
 import type { PreviewItem } from "@/lib/sampler";
 
 const MEDIUM_GLYPH: Record<PreviewItem["medium"], string> = {
-  sound: "sound",
-  image: "image",
+  sound: "audio",
   video: "video",
-  words: "words",
 };
 
 /** A compact, non-interactive preview used on the landing strip. */
@@ -38,20 +36,17 @@ function Body({ item }: { item: PreviewItem }) {
           </span>
           <span className="meta">{formatDuration(item.duration)}</span>
         </div>
-        <div className="h-14 w-full">
-          <WaveformStatic peaks={item.peaks} bars={64} progress={0.32} />
-        </div>
+        {item.lyrics ? (
+          <p className="prose-words line-clamp-2 font-serif text-[1.05rem] leading-snug text-bone-64">{item.lyrics}</p>
+        ) : (
+          <div className="h-14 w-full">
+            <WaveformStatic peaks={item.peaks} bars={64} progress={0.32} />
+          </div>
+        )}
       </div>
     );
   }
-  if (item.medium === "words") {
-    return (
-      <div className="flex h-40 items-center rounded-md bg-ink-sunken/70 p-5">
-        <p className="prose-words font-serif text-[1.15rem] leading-snug text-bone-80">{item.words}</p>
-      </div>
-    );
-  }
-  // image / video
+  // video
   const src = item.imageUrl ?? item.imageSvg;
   return (
     <div className="relative h-40 overflow-hidden rounded-md bg-ink-sunken">
@@ -59,19 +54,15 @@ function Body({ item }: { item: PreviewItem }) {
         // eslint-disable-next-line @next/next/no-img-element -- data URI or short-lived signed URL
         <img src={src} alt={item.title ?? ""} className="h-full w-full object-cover" />
       ) : null}
-      {item.medium === "video" ? (
-        <>
-          <span className="absolute inset-0 grid place-items-center">
-            <span className="grid size-11 place-items-center rounded-full bg-ink-veil text-bone backdrop-blur-sm">
-              <PlayGlyph />
-            </span>
-          </span>
-          {item.duration ? (
-            <span className="meta absolute bottom-2 right-2 rounded bg-ink-veil px-1.5 py-0.5 text-bone">
-              {formatDuration(item.duration)}
-            </span>
-          ) : null}
-        </>
+      <span className="absolute inset-0 grid place-items-center">
+        <span className="grid size-11 place-items-center rounded-full bg-ink-veil text-bone backdrop-blur-sm">
+          <PlayGlyph />
+        </span>
+      </span>
+      {item.duration ? (
+        <span className="meta absolute bottom-2 right-2 rounded bg-ink-veil px-1.5 py-0.5 text-bone">
+          {formatDuration(item.duration)}
+        </span>
       ) : null}
     </div>
   );

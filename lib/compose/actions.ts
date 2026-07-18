@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/data/profiles";
 import { consumeUserRateLimit } from "@/lib/rate-limit";
 import { normalizeTags } from "@/lib/taxonomy";
-import { sniff, AUDIO_EXT, IMAGE_EXT } from "@/lib/media/validate";
+import { sniff, AUDIO_EXT } from "@/lib/media/validate";
 import { PublishInput, type PublishInputT } from "@/lib/compose/schema";
 import { FEATURES } from "@/lib/env.server";
 
@@ -15,10 +15,9 @@ const EXT_MIME: Record<string, string> = {
   oga: "audio/ogg", aac: "audio/aac", flac: "audio/flac", webm: "audio/webm",
 };
 
-/** Mint a per-user, per-piece signed upload URL. Path is built server-side. */
+/** Mint a per-user, per-piece signed upload URL for the track's audio. Path is built server-side. */
 export async function requestUploadUrl(
   pieceId: string,
-  purpose: "audio" | "staging",
   ext: string,
 ): Promise<{ ok: true; signedUrl: string; path: string; token: string } | { ok: false; error: string }> {
   const user = await getSessionUser();
@@ -26,13 +25,9 @@ export async function requestUploadUrl(
   if (!z.string().uuid().safeParse(pieceId).success) return { ok: false, error: "bad id" };
 
   const cleanExt = ext.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5);
-  if (purpose === "audio" && !AUDIO_EXT.has(cleanExt)) return { ok: false, error: "unsupported audio type" };
-  if (purpose === "staging" && !IMAGE_EXT.has(cleanExt)) return { ok: false, error: "unsupported image type" };
+  if (!AUDIO_EXT.has(cleanExt)) return { ok: false, error: "unsupported audio type" };
 
-  const path =
-    purpose === "audio"
-      ? `${user.id}/${pieceId}/audio.${cleanExt}`
-      : `${user.id}/staging/${crypto.randomUUID()}.${cleanExt}`;
+  const path = `${user.id}/${pieceId}/audio.${cleanExt}`;
 
   const supabase = await createClient();
   const { data, error } = await supabase.storage.from("media").createSignedUploadUrl(path, { upsert: true });
@@ -66,9 +61,8 @@ export async function publishPiece(raw: PublishInputT): Promise<PublishResult> {
   const supabase = await createClient();
   const prefix = `${user.id}/${input.id}/`;
 
-  // ownership: every media path must be inside this user's folder for this piece
+  // ownership: the audio path must be inside this user's folder for this piece
   if (input.audio && !input.audio.path.startsWith(prefix)) return { ok: false, error: "audio path mismatch" };
-  if (input.images?.some((im) => !im.path.startsWith(prefix))) return { ok: false, error: "image path mismatch" };
 
   // magic-byte validation for audio (never trust the extension)
   if (input.medium === "sound" && input.audio) {
@@ -82,18 +76,28 @@ export async function publishPiece(raw: PublishInputT): Promise<PublishResult> {
   // validate `after` target is visible
   if (input.after_piece_id) {
     const { data: viewable } = await supabase.rpc("can_view_piece", { p_id: input.after_piece_id });
-    if (!viewable) return { ok: false, error: "the piece you linked isn't available." };
+    if (!viewable) return { ok: false, error: "the track you linked isn't available." };
   }
 
   const tags = normalizeTags(input.tags);
+  const lyrics = input.lyrics?.trim() || null;
+  // Beats/instrumentals carry no vocals; everything else defaults to having them.
+  const hasVocals = input.track_kind === "beat" ? false : input.has_vocals;
 
   const { error: pieceErr } = await supabase.from("pieces").insert({
     id: input.id,
     artist_id: user.id,
     medium: input.medium,
+    track_kind: input.track_kind,
+    has_vocals: hasVocals,
     title: input.title?.trim() || null,
     caption: input.caption?.trim() || null,
-    body: input.medium === "words" || input.body?.trim() ? (input.body?.trim() ?? null) : null,
+    cover_of_title: input.cover_of_title?.trim() || null,
+    cover_of_artist: input.cover_of_artist?.trim() || null,
+    lyrics,
+    // pasted lyrics are 'written'; the transcribe → confirm flow sets 'transcribed_confirmed'
+    lyrics_source: lyrics ? (input.lyrics_source ?? "written") : null,
+    show_lyrics: input.show_lyrics,
     tags,
     visibility: input.visibility,
     after_piece_id: input.after_piece_id ?? null,
@@ -105,12 +109,11 @@ export async function publishPiece(raw: PublishInputT): Promise<PublishResult> {
     return { ok: false, error: pieceErr.code === "23505" ? "already posted." : "couldn't post that. try again." };
   }
 
-  // media rows
-  let mediaErr: unknown = null;
+  // audio media row (video lives in Mux; its media row is written by the webhook)
   if (input.medium === "sound" && input.audio) {
     const peaks = input.audio.peaks.map((p) => Math.round(Math.min(1, Math.max(0, p)) * 1000) / 1000);
     const ext = input.audio.path.split(".").pop()?.toLowerCase() ?? "mp3";
-    const { error } = await supabase.from("piece_media").insert({
+    const { error: mediaErr } = await supabase.from("piece_media").insert({
       piece_id: input.id,
       kind: "audio",
       storage_path: input.audio.path,
@@ -120,28 +123,11 @@ export async function publishPiece(raw: PublishInputT): Promise<PublishResult> {
       bytes: input.audio.bytes,
       position: 0,
     });
-    mediaErr = error;
-  } else if (input.medium === "image" && input.images) {
-    const { error } = await supabase.from("piece_media").insert(
-      input.images.map((im, i) => ({
-        piece_id: input.id,
-        kind: "image" as const,
-        storage_path: im.path,
-        width: im.width,
-        height: im.height,
-        blurhash: im.blurhash,
-        mime: "image/webp",
-        bytes: im.bytes,
-        position: i,
-      })),
-    );
-    mediaErr = error;
-  }
-
-  if (mediaErr) {
-    // roll back the piece (cascades piece_search + jobs)
-    await supabase.from("pieces").delete().eq("id", input.id);
-    return { ok: false, error: "couldn't attach the media. try again." };
+    if (mediaErr) {
+      // roll back the piece (cascades piece_search + jobs)
+      await supabase.from("pieces").delete().eq("id", input.id);
+      return { ok: false, error: "couldn't attach the audio. try again." };
+    }
   }
 
   redirect(`/piece/${input.id}`);

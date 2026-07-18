@@ -8,7 +8,7 @@ import type { Medium } from "@/lib/types";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const VALID_MEDIA = new Set<Medium>(["sound", "video", "image", "words"]);
+const VALID_MEDIA = new Set<Medium>(["sound", "video"]);
 
 /**
  * Search endpoint (GET, cancellable from the client). Rate-limited; on limit it

@@ -2,10 +2,9 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { describeImage } from "@/lib/enrichment/anthropic";
 import { transcribeAudio } from "@/lib/enrichment/groq";
 import { embedForIndex, type EmbedInput } from "@/lib/embeddings";
-import type { Database, TablesUpdate } from "@/lib/supabase/types";
+import type { Database, TablesUpdate, Json } from "@/lib/supabase/types";
 
 type Admin = SupabaseClient<Database>;
 interface Job { id: string; piece_id: string; stage: "embed" | "describe" | "transcribe" | "index"; attempts: number }
@@ -54,34 +53,29 @@ export async function drainEnrichment(limit = 10): Promise<{ processed: number; 
 async function runJob(admin: Admin, job: Job): Promise<"done" | "skipped"> {
   const { data: piece } = await admin
     .from("pieces")
-    .select("id,medium,title,caption,body,tags,mux_playback_id")
+    .select("id,medium,title,caption,tags,has_vocals,mux_playback_id")
     .eq("id", job.piece_id)
     .maybeSingle();
   if (!piece) return "skipped";
 
   const { data: media } = await admin.from("piece_media").select("kind,storage_path").eq("piece_id", job.piece_id);
-  const image = media?.find((m) => m.kind === "image" && m.storage_path);
   const audio = media?.find((m) => m.kind === "audio" && m.storage_path);
 
-  if (job.stage === "describe") {
-    if (!image?.storage_path) return "skipped";
-    const bytes = await download(admin, image.storage_path);
-    if (!bytes) return "skipped";
-    const desc = await describeImage(bytes, "image/webp");
-    if (desc) {
-      await admin.from("piece_search").update({ description: desc }).eq("piece_id", job.piece_id);
-      await rebuildDoc(admin, job.piece_id);
-    }
-    return "done";
-  }
+  // 'describe' is a legacy stage (image pieces are gone); nothing to do.
+  if (job.stage === "describe") return "skipped";
 
   if (job.stage === "transcribe") {
-    if (!audio?.storage_path) return "skipped";
+    // Only vocal tracks are worth transcribing. Audio lives in Storage; video
+    // audio extraction is handled separately — skip gracefully when absent.
+    if (!piece.has_vocals || !audio?.storage_path) return "skipped";
     const bytes = await download(admin, audio.storage_path);
     if (!bytes) return "skipped";
-    const transcript = await transcribeAudio(bytes, audio.storage_path.split("/").pop() ?? "audio");
-    if (transcript) {
-      await admin.from("piece_search").update({ transcript }).eq("piece_id", job.piece_id);
+    const result = await transcribeAudio(bytes, audio.storage_path.split("/").pop() ?? "audio");
+    if (result) {
+      await admin
+        .from("piece_search")
+        .update({ transcript: result.text, transcript_segments: result.segments as unknown as Json })
+        .eq("piece_id", job.piece_id);
       await rebuildDoc(admin, job.piece_id);
     }
     return "done";
@@ -89,10 +83,7 @@ async function runJob(admin: Admin, job: Job): Promise<"done" | "skipped"> {
 
   if (job.stage === "embed") {
     const inputs: EmbedInput[] = [];
-    if (piece.medium === "image" && image?.storage_path) {
-      const bytes = await download(admin, image.storage_path);
-      if (bytes) inputs.push({ type: "image", bytes, mime: "image/webp" });
-    } else if (piece.medium === "sound" && audio?.storage_path) {
+    if (piece.medium === "sound" && audio?.storage_path) {
       const bytes = await download(admin, audio.storage_path);
       if (bytes) inputs.push({ type: "audio", bytes, mime: "audio/mpeg" });
     }
@@ -125,17 +116,22 @@ async function download(admin: Admin, path: string): Promise<Uint8Array | null> 
 
 async function rebuildDoc(admin: Admin, pieceId: string): Promise<void> {
   const [{ data: piece }, { data: ps }] = await Promise.all([
-    admin.from("pieces").select("title,caption,body,tags").eq("id", pieceId).maybeSingle(),
+    admin.from("pieces").select("title,caption,lyrics,cover_of_title,cover_of_artist,tags").eq("id", pieceId).maybeSingle(),
     admin.from("piece_search").select("description,transcript").eq("piece_id", pieceId).maybeSingle(),
   ]);
   if (!piece) return;
   const doc = [
-    piece.title, piece.caption, piece.body,
+    piece.title, piece.caption, piece.lyrics,
     (piece.tags ?? []).join(" "),
     ps?.description, ps?.transcript,
+    piece.cover_of_title, piece.cover_of_artist,
   ]
     .filter(Boolean)
     .join(" ")
     .trim();
-  await admin.from("piece_search").update({ doc: doc || null }).eq("piece_id", pieceId);
+  // Mirror confirmed lyrics for weight-A FTS; keep doc in sync with enrichment.
+  await admin
+    .from("piece_search")
+    .update({ doc: doc || null, lyrics_text: piece.lyrics ?? null })
+    .eq("piece_id", pieceId);
 }

@@ -23,9 +23,8 @@ export async function getLandingPreviews(): Promise<PreviewItem[]> {
 
 function toPreview(card: PieceCard): PreviewItem {
   const audio = card.media.find((m) => m.kind === "audio");
-  const image = card.media.find((m) => m.kind === "image");
   return {
-    medium: card.medium,
+    medium: card.medium === "video" ? "video" : "sound",
     title: card.title,
     sequenceNo: card.sequence_no,
     artistName: card.artist.display_name,
@@ -37,7 +36,7 @@ function toPreview(card: PieceCard): PreviewItem {
     imageUrl:
       card.medium === "video" && card.mux_playback_id
         ? muxThumbnail(card.mux_playback_id, 640)
-        : (image?.url ?? undefined),
-    words: card.medium === "words" ? (card.body ?? undefined) : undefined,
+        : undefined,
+    lyrics: card.lyrics ?? undefined,
   };
 }

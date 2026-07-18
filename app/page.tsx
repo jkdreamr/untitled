@@ -50,9 +50,9 @@ export default async function LandingPage() {
               </h1>
               <div className="max-w-md [animation:rise-in_.3s_var(--ease-out)_.08s_both]">
                 <p className="text-[1.05rem] leading-relaxed text-bone-64">
-                  the raw thing itself — the voice memo, the one-take cover, the phone video at the
-                  piano, the sketchbook page, the lyric fragment. no polishing, no captions to
-                  optimize, no algorithm to feed.
+                  the raw thing itself — the voice memo, the one-take cover, the verse over a beat,
+                  the phone video at the piano. no polishing, no captions to optimize, no algorithm
+                  to feed.
                 </p>
                 <div className="mt-8 flex flex-wrap items-center gap-3">
                   <Link href="/login" className={buttonClasses("solid", "lg")}>
@@ -63,7 +63,7 @@ export default async function LandingPage() {
                   </Link>
                 </div>
                 <p className="meta mt-6 text-bone-32">
-                  human-made only · ai never touches the art · titles optional
+                  raw music, human-made · ai only finds it · titles optional
                 </p>
               </div>
             </div>
@@ -98,14 +98,14 @@ export default async function LandingPage() {
               </div>
               <div className="space-y-6 text-[1.05rem] leading-relaxed text-bone-64 md:pt-14">
                 <p>
-                  no AI-generated images, vocals, music, or text as posted work. one tap at upload —{" "}
-                  <span className="text-bone">“I made this”</span> — and a terms clause that forbids
-                  training on anything you post here.
+                  no AI-generated vocals, instrumentals, or lyrics as posted work. one tap at
+                  upload — <span className="text-bone">“I made this”</span> — and a terms clause that
+                  forbids training on anything you post here.
                 </p>
                 <p>
-                  we&apos;re not against the tools. we&apos;re for the making. AI stays in one lane:
-                  helping the right person find your work. it never generates, filters, or
-                  “improves” a single piece.
+                  we&apos;re not against the tools. we&apos;re for the making. AI stays in two lanes:
+                  making your lyrics searchable, and helping the right listener find you. it never
+                  generates, filters, or “improves” a single take.
                 </p>
                 <p className="meta text-bone-46">
                   every public page ships{" "}
@@ -120,37 +120,40 @@ export default async function LandingPage() {
           <section className="border-t border-bone-10 bg-ink-raised/30">
             <div className="mx-auto max-w-6xl px-6 py-24 sm:px-10">
               <h2 className="display text-[clamp(1.8rem,3.5vw,2.75rem)] text-bone">
-                human-made art, <span className="text-bone-46 italic">human-made discovery.</span>
+                raw music, human-made — <span className="text-bone-46 italic">AI only finds it.</span>
               </h2>
               <div className="mt-14 grid gap-x-10 gap-y-12 sm:grid-cols-3">
                 <Feature
                   n="01"
-                  title="search that hears"
-                  body="natural-language, cross-media. “melancholic bedroom guitar cover, low voice” matches the actual audio — not just the tags someone remembered to add."
+                  title="search that hears the words"
+                  body="natural-language, and it reads the lyrics too. “melancholic bedroom guitar cover, low voice” or a line you half-remember — it matches the actual audio and the words in it."
                 />
                 <Feature
                   n="02"
-                  title="wander, with room to breathe"
-                  body="discovery driven by similarity with forced diversity — never two of the same in a row, always a slice of new artists. built to help you find, then leave and go make."
+                  title="find the musician"
+                  body="search by sound, by role, by who's open to work. a producer looking for a low alto, a writer open to features — discovery points at people, not just tracks."
                 />
                 <Feature
                   n="03"
                   title="no rankings, ever"
-                  body="the following feed is strictly reverse-chronological. no trending, no leaderboards, nothing optimized for time-on-app. artists never pay to be seen."
+                  body="the following feed is strictly reverse-chronological. no trending, no leaderboards, nothing optimized for time-on-app. artists never pay to be heard."
                 />
               </div>
             </div>
           </section>
 
-          {/* four media */}
+          {/* the take */}
           <section className="mx-auto max-w-6xl px-6 py-24 sm:px-10">
-            <h2 className="meta meta-caps mb-10 text-bone-46">four ways to post</h2>
-            <dl className="grid gap-px overflow-hidden rounded-lg border border-bone-10 bg-bone-10 sm:grid-cols-2 lg:grid-cols-4">
-              <Medium name="sound" limit="up to 6 min" body="voice memos, covers, demos, takes, raps over beats, field recordings." />
-              <Medium name="video" limit="up to 3 min" body="singing, playing, drawing, performing — muted poster, tap to play." />
-              <Medium name="image" limit="up to 6 per roll" body="drawings, paintings, self-made digital art, photography. never cropped." />
-              <Medium name="words" limit="up to 2,000 chars" body="lyrics, poems, fragments, prose — set in a serif, given room." />
+            <h2 className="meta meta-caps mb-10 text-bone-46">everything is a track</h2>
+            <dl className="grid gap-px overflow-hidden rounded-lg border border-bone-10 bg-bone-10 sm:grid-cols-2">
+              <Format name="audio" limit="up to 6 min" body="voice memos, one-take covers, demos, verses over a beat, a cappella — the waveform shows up the second you drop the file." />
+              <Format name="video" limit="up to 3 min" body="singing, playing, performing — the phone video at the piano. muted poster, tap to play." />
             </dl>
+            <p className="mt-6 max-w-2xl text-[0.95rem] leading-relaxed text-bone-46">
+              lyrics ride along with the take — paste them, or let us transcribe the vocal for you to
+              confirm. covers, freestyles, and beats each get their own tag, so the right thing finds
+              the right ears.
+            </p>
           </section>
 
           {/* final CTA */}
@@ -187,7 +190,7 @@ function Feature({ n, title, body }: { n: string; title: string; body: string })
   );
 }
 
-function Medium({ name, limit, body }: { name: string; limit: string; body: string }) {
+function Format({ name, limit, body }: { name: string; limit: string; body: string }) {
   return (
     <div className="bg-ink p-6">
       <div className="flex items-baseline justify-between">

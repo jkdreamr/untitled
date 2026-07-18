@@ -12,21 +12,22 @@ export default function TermsPage() {
       </header>
 
       <p className="mt-8 text-bone-64 leading-relaxed">
-        UNTITLED is a place for raw, human-made art, built by NOVUM Labs. these terms are the short
+        UNTITLED is a place for raw, human-made music, built by NOVUM Labs. these terms are the short
         version of a simple deal: you keep your work, we keep it human, and neither of us lets a
         machine train on it. by using UNTITLED you agree to what follows.
       </p>
 
       <h2 className="mt-10 mb-3 font-serif text-2xl text-bone">human-made only</h2>
       <p className="text-bone-64 leading-relaxed">
-        everything posted here must be made by a person. no AI-generated images, vocals, music, or
-        text may be posted as work — not as a whole piece, not as part of one. at upload you tap once
-        to attest, &ldquo;I made this,&rdquo; and that one-tap attestation is part of these terms.
+        everything posted here must be made by a person. no AI-generated vocals, instrumentals, or
+        lyrics may be posted as work — not as a whole track, not as part of one. at upload you tap
+        once to attest, &ldquo;I made this,&rdquo; and that one-tap attestation is part of these
+        terms.
       </p>
       <p className="mt-4 text-bone-64 leading-relaxed">
         work we find to be machine-generated gets removed, and accounts that keep doing it are
-        closed. tools that help you record, tune, or edit your own performance are fine — the line is
-        generation, not craft.
+        closed. tools that help you record, tune, mix, or master your own performance are fine — the
+        line is generation, not craft.
       </p>
 
       <section className="mt-10 rounded-lg border border-bone-16 bg-ink-raised/40 p-6 sm:p-8">

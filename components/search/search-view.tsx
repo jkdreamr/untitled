@@ -5,7 +5,8 @@ import { ResultCard } from "@/components/search/result-card";
 import { cn } from "@/lib/utils";
 import type { Medium, PieceCard } from "@/lib/types";
 
-const MEDIA: Medium[] = ["sound", "image", "video", "words"];
+const MEDIA: Medium[] = ["sound", "video"];
+const MEDIA_LABEL: Record<string, string> = { sound: "audio", video: "video" };
 
 export function SearchView({
   initialQuery,
@@ -95,7 +96,7 @@ export function SearchView({
             aria-pressed={media.has(m)}
             className={cn("rounded-full border px-3 py-1 font-mono text-[0.75rem] transition-colors", media.has(m) ? "border-lime bg-lime/10 text-lime" : "border-bone-16 text-bone-46 hover:text-bone")}
           >
-            {m}
+            {MEDIA_LABEL[m] ?? m}
           </button>
         ))}
         {tags.map((t) => (

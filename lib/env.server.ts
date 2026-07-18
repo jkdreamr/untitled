@@ -13,9 +13,6 @@ export const SERVER_ENV = {
   GEMINI_EMBED_MODEL: process.env.GEMINI_EMBED_MODEL ?? "gemini-embedding-2",
   GEMINI_EMBED_DIM: Number(process.env.GEMINI_EMBED_DIM ?? "1536"),
 
-  ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ?? "",
-  ANTHROPIC_VISION_MODEL: process.env.ANTHROPIC_VISION_MODEL ?? "claude-sonnet-4-6",
-
   GROQ_API_KEY: process.env.GROQ_API_KEY ?? "",
   GROQ_WHISPER_MODEL: process.env.GROQ_WHISPER_MODEL ?? "whisper-large-v3-turbo",
 
@@ -37,9 +34,7 @@ export const FEATURES = {
   muxWebhook: Boolean(SERVER_ENV.MUX_WEBHOOK_SECRET),
   /** Unified multimodal embeddings (Layer A). */
   geminiEmbeddings: Boolean(SERVER_ENV.GEMINI_API_KEY),
-  /** Vision descriptions for images (enrichment). */
-  visionEnrichment: Boolean(SERVER_ENV.ANTHROPIC_API_KEY),
-  /** Whisper transcription for sung/rapped audio (enrichment). */
+  /** Whisper transcription for sung/rapped vocals (enrichment). */
   transcription: Boolean(SERVER_ENV.GROQ_API_KEY),
   /** Service-role operations (enrichment worker, hard deletes, admin). */
   serviceRole: Boolean(SERVER_ENV.SUPABASE_SERVICE_ROLE_KEY),
