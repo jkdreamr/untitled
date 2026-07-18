@@ -24,6 +24,9 @@ export interface PublicProfile {
   avatar_url: string | null;
   quiet_mode: boolean;
   role: Profile["role"];
+  roles: string[];
+  open_to: string[];
+  voice_note: string | null;
   /** null when quiet mode and not self */
   follower_count: number | null;
   following_count: number | null;
@@ -56,7 +59,7 @@ export async function getProfileByHandle(handle: string): Promise<PublicProfile 
   const { data: p } = await supabase
     .from("profiles")
     .select(
-      "id, handle, display_name, bio, links, avatar_path, quiet_mode, role, follower_count, following_count, pinned_piece_id, created_at",
+      "id, handle, display_name, bio, links, avatar_path, quiet_mode, role, roles, open_to, voice_note, follower_count, following_count, pinned_piece_id, created_at",
     )
     .eq("handle", handle)
     .maybeSingle();
@@ -91,6 +94,9 @@ export async function getProfileByHandle(handle: string): Promise<PublicProfile 
     avatar_url,
     quiet_mode: p.quiet_mode,
     role: p.role,
+    roles: p.roles ?? [],
+    open_to: p.open_to ?? [],
+    voice_note: p.voice_note,
     follower_count: masked ? null : p.follower_count,
     following_count: masked ? null : p.following_count,
     is_self: isSelf,

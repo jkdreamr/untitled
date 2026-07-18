@@ -130,8 +130,24 @@ export interface WanderItem {
   card: PieceCard;
   score: number;
   is_exploration: boolean;
-  medium: Medium;
+  track_kind: TrackKind;
   artist_id: string;
+}
+
+/** A musician surfaced by talent search (`search_artists`), URL-signed. */
+export interface ArtistResult {
+  id: string;
+  handle: string;
+  display_name: string;
+  avatar_path: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+  voice_note: string | null;
+  roles: string[];
+  open_to: string[];
+  follower_count: number;
+  track_count: number;
+  top_tags: string[];
 }
 
 /** A keyset cursor for reverse-chronological pagination. */

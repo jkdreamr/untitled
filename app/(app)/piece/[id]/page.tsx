@@ -14,7 +14,8 @@ import { FollowButton } from "@/components/piece/follow-button";
 import { CommentSection } from "@/components/piece/comment-section";
 import { ReportDialog } from "@/components/piece/report-dialog";
 import { ViewPing } from "@/components/piece/view-ping";
-import { getPiece, getPieceComments, getPieceReactions, getPiecesAfter } from "@/lib/data/pieces";
+import { ResultCard } from "@/components/search/result-card";
+import { getPiece, getPieceComments, getPieceReactions, getPiecesAfter, getSimilarTracks } from "@/lib/data/pieces";
 import { fetchPendingTranscription } from "@/lib/lyrics/actions";
 import { getSessionUser, getCurrentProfile } from "@/lib/data/profiles";
 import { pieceTitle, formatPieceDate, formatDuration } from "@/lib/utils";
@@ -38,10 +39,11 @@ export default async function PiecePage({ params }: { params: Promise<{ id: stri
   const card = await getPiece(id);
   if (!card) notFound();
 
-  const [reactions, comments, afters, user, profile] = await Promise.all([
+  const [reactions, comments, afters, similar, user, profile] = await Promise.all([
     getPieceReactions(id),
     getPieceComments(id),
     getPiecesAfter(id),
+    getSimilarTracks(id, 6),
     getSessionUser(),
     getCurrentProfile(),
   ]);
@@ -164,6 +166,18 @@ export default async function PiecePage({ params }: { params: Promise<{ id: stri
             ))}
           </div>
         </div>
+      )}
+
+      {/* sounds like */}
+      {similar.length > 0 && (
+        <section className="mt-10">
+          <h2 className="meta meta-caps mb-3 text-bone-46">sounds like</h2>
+          <div className="space-y-1">
+            {similar.map((c) => (
+              <ResultCard key={c.id} card={c} />
+            ))}
+          </div>
+        </section>
       )}
 
       {/* comments */}

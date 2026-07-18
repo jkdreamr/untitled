@@ -792,14 +792,20 @@ export type Database = {
           published_at: string
         }[]
       }
+      get_similar_tracks: {
+        Args: { p_id: string; p_limit?: number }
+        Returns: {
+          card: Json
+        }[]
+      }
       get_wander_pool: {
         Args: { p_exclude?: string[]; p_limit?: number }
         Returns: {
           artist_id: string
           card: Json
           is_exploration: boolean
-          medium: Database["public"]["Enums"]["medium"]
           score: number
+          track_kind: Database["public"]["Enums"]["track_kind"]
         }[]
       }
       is_admin: { Args: never; Returns: boolean }
@@ -817,6 +823,19 @@ export type Database = {
           p_status: Database["public"]["Enums"]["report_status"]
         }
         Returns: undefined
+      }
+      search_artists: {
+        Args: {
+          p_limit?: number
+          p_open_to?: string[]
+          p_query?: string
+          p_roles?: string[]
+          p_tags?: string[]
+        }
+        Returns: {
+          artist: Json
+          score: number
+        }[]
       }
       search_pieces: {
         Args: {

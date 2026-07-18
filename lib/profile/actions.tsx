@@ -5,16 +5,16 @@ import { getProfilePieces } from "@/lib/data/pieces";
 import { getSessionUser } from "@/lib/data/profiles";
 import { cardsToTracks } from "@/lib/tracks";
 import type { MorePage } from "@/lib/feed/actions";
-import type { Cursor, Medium } from "@/lib/types";
+import type { Cursor, TrackKind } from "@/lib/types";
 
-/** Paginate a profile's work grid (bound to handle + medium, then cursor). */
+/** Paginate a musician's discography (bound to handle + track kind, then cursor). */
 export async function loadMoreProfile(
   handle: string,
-  medium: Medium | null,
+  kind: TrackKind | null,
   cursor: Cursor,
 ): Promise<MorePage> {
   const user = await getSessionUser();
-  const { cards, nextCursor } = await getProfilePieces(handle, medium, cursor);
+  const { cards, nextCursor } = await getProfilePieces(handle, kind, cursor);
   return {
     node: <FeedItems cards={cards} authed={!!user} />,
     nextCursor,
