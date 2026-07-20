@@ -3,6 +3,8 @@ import { PlayerProvider } from "@/components/player/player-context";
 import { MiniPlayer } from "@/components/player/mini-player";
 import { AppNav, type NavProfile } from "@/components/nav/app-nav";
 import { getSessionUser, getCurrentProfile } from "@/lib/data/profiles";
+import { isApprovedScout } from "@/lib/data/scout";
+import { getUnreadNotificationCount } from "@/lib/data/notifications";
 import { signOne } from "@/lib/data/cards";
 import { createClient } from "@/lib/supabase/server";
 
@@ -16,11 +18,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   let navProfile: NavProfile | null = null;
   if (profile) {
     const supabase = await createClient();
+    const [avatarUrl, isScout, unreadNotifications] = await Promise.all([
+      signOne(supabase, "avatars", profile.avatar_path),
+      isApprovedScout(),
+      getUnreadNotificationCount(),
+    ]);
     navProfile = {
       handle: profile.handle,
       displayName: profile.display_name,
-      avatarUrl: await signOne(supabase, "avatars", profile.avatar_path),
+      avatarUrl,
       isAdmin: profile.role === "admin",
+      isScout,
+      unreadNotifications,
     };
   }
 

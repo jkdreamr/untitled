@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { FEATURES } from "@/lib/env.server";
 import { ScoutForm } from "@/components/marketing/scout-form";
+import { isApprovedScout } from "@/lib/data/scout";
 
 export const metadata: Metadata = { title: "scout" };
 // Gate is evaluated at request time so ENABLE_SCOUT can toggle without a rebuild.
 export const dynamic = "force-dynamic";
 
-export default function ScoutPage() {
+export default async function ScoutPage() {
+  // Approved scouts skip the pitch and go straight to the tools.
+  if (await isApprovedScout()) redirect("/scout/search");
   if (!FEATURES.scout) notFound();
 
   return (

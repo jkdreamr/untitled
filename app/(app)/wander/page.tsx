@@ -16,15 +16,13 @@ export default async function WanderPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 sm:px-6">
-      <div className="flex items-baseline justify-between py-6">
+      <div className="py-6">
         <h1 className="font-serif text-2xl text-bone">wander</h1>
-        <span className="meta">similarity · forced diversity · no ranking</span>
       </div>
 
       {cards.length === 0 ? (
         <div className="py-24 text-center">
           <p className="font-serif text-2xl text-bone">nothing to wander yet.</p>
-          <p className="mt-2 text-sm text-bone-46">the room is empty. be the first to hang something.</p>
           <Link href="/compose" className={buttonClasses("solid", "md", "mt-6")}>post the first take</Link>
         </div>
       ) : (

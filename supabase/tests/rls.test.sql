@@ -12,7 +12,7 @@
 -- ============================================================================
 
 begin;
-select plan(22);
+select plan(41);
 
 -- ---- fixtures (as the migration/superuser role) -------------------------
 -- three auth users: A (author), B (other), Q (quiet-mode author)
@@ -182,6 +182,168 @@ select throws_ok(
 select throws_ok(
   $$ update profiles set roles = '{wizard}' where id = '11111111-1111-1111-1111-111111111111' $$,
   '23514', null, 'profiles.roles rejects values outside the allowed set');
+
+-- ============================================================================
+-- SIGNALS + SCOUT (workstream B): the backend/gated layer must never leak into
+-- consumer surfaces, and must honor consent + gating at every edge.
+-- ============================================================================
+reset role;
+select set_config('request.jwt.claims', '', true);
+
+-- fixtures: two approved scouts and three artists —
+--   V visible + open_to (findable, contactable),
+--   H opted out of scouts (visible_to_scouts=false),
+--   U visible but no open_to (findable, uncontactable).
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password,
+  email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data)
+values
+  ('44444444-4444-4444-4444-444444444444','00000000-0000-0000-0000-000000000000','authenticated','authenticated','s@test.dev','x',now(),now(),now(),'{}','{}'),
+  ('55555555-5555-5555-5555-555555555555','00000000-0000-0000-0000-000000000000','authenticated','authenticated','s2@test.dev','x',now(),now(),now(),'{}','{}'),
+  ('66666666-6666-6666-6666-666666666666','00000000-0000-0000-0000-000000000000','authenticated','authenticated','v@test.dev','x',now(),now(),now(),'{}','{}'),
+  ('77777777-7777-7777-7777-777777777777','00000000-0000-0000-0000-000000000000','authenticated','authenticated','h@test.dev','x',now(),now(),now(),'{}','{}'),
+  ('88888888-8888-8888-8888-888888888888','00000000-0000-0000-0000-000000000000','authenticated','authenticated','u@test.dev','x',now(),now(),now(),'{}','{}')
+on conflict (id) do nothing;
+
+insert into profiles (id, handle, display_name, onboarded, roles, open_to, visible_to_scouts) values
+  ('44444444-4444-4444-4444-444444444444','test_scout','Scout One', true, '{}', '{}', true),
+  ('55555555-5555-5555-5555-555555555555','test_scout2','Scout Two', true, '{}', '{}', true),
+  ('66666666-6666-6666-6666-666666666666','test_vis','Visible Artist', true, '{vocalist}', '{collabs}', true),
+  ('77777777-7777-7777-7777-777777777777','test_hidden','Hidden Artist', true, '{vocalist}', '{collabs}', false),
+  ('88888888-8888-8888-8888-888888888888','test_uncontact','No-OpenTo Artist', true, '{vocalist}', '{}', true);
+
+insert into scout_accounts (profile_id, org_name, status) values
+  ('44444444-4444-4444-4444-444444444444','Test Label','approved'),
+  ('55555555-5555-5555-5555-555555555555','Other Label','approved');
+
+insert into pieces (id, artist_id, medium, visibility, status, attested, sequence_no) values
+  ('66660000-0000-0000-0000-000000000001','66666666-6666-6666-6666-666666666666','sound','public','active',true,0),
+  ('77770000-0000-0000-0000-000000000001','77777777-7777-7777-7777-777777777777','sound','public','active',true,0),
+  ('88880000-0000-0000-0000-000000000001','88888888-8888-8888-8888-888888888888','sound','public','active',true,0);
+
+-- a suspended (moderated) artist: visible_to_scouts stays true, but `suspended`
+-- must still hide them from every scout surface
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password,
+  email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data)
+values ('99999999-9999-9999-9999-999999999999','00000000-0000-0000-0000-000000000000','authenticated','authenticated','susp@test.dev','x',now(),now(),now(),'{}','{}')
+on conflict (id) do nothing;
+insert into profiles (id, handle, display_name, onboarded, roles, open_to, visible_to_scouts, suspended)
+values ('99999999-9999-9999-9999-999999999999','test_susp','Suspended', true, '{vocalist}', '{collabs}', true, true);
+
+-- (B0.1) no consumer RPC references any signals/scout/notification table
+select is(
+  (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public'
+       and p.proname in ('get_following_feed','get_wander_pool','search_pieces','search_artists','refresh_recommendations','piece_card_json')
+       and p.prosrc ~* '(artist_signals_daily|artist_momentum|scout_queries|listen_events|scout_accounts|scout_lists|scout_saved_searches|scout_list_items|notifications)'),
+  0::bigint, 'no consumer RPC references a signals/scout/notification table');
+
+-- ---- as a plain authenticated user (U, not a scout) ----------------------
+set local request.jwt.claims to '{"sub":"88888888-8888-8888-8888-888888888888","role":"authenticated"}';
+set local role authenticated;
+
+select throws_ok(
+  $$ select score from artist_momentum $$,
+  '42501', null, 'authenticated CANNOT read artist_momentum (internal)');
+select throws_ok(
+  $$ select quartile from listen_events $$,
+  '42501', null, 'authenticated CANNOT read listen_events (internal)');
+select throws_ok(
+  $$ insert into scout_accounts (profile_id, org_name, status)
+     values ('88888888-8888-8888-8888-888888888888','Sneaky','approved') $$,
+  '42501', null, 'authenticated CANNOT self-provision a scout account');
+select throws_ok(
+  $$ select scout_search_artists('', null, null, null, null, null, 'momentum', 10) $$,
+  '42501', null, 'a non-scout CANNOT run scout_search_artists');
+select throws_ok(
+  $$ select send_scout_contact('66666666-6666-6666-6666-666666666666','hi') $$,
+  '42501', null, 'a non-scout CANNOT send a scout contact');
+reset role;
+
+-- ---- as an approved scout (S) --------------------------------------------
+set local request.jwt.claims to '{"sub":"44444444-4444-4444-4444-444444444444","role":"authenticated"}';
+set local role authenticated;
+
+select is(
+  (select count(*) from scout_search_artists('', null, null, null, null, null, 'momentum', 50)
+     where (artist->>'id') = '66666666-6666-6666-6666-666666666666'),
+  1::bigint, 'scout search surfaces a visible artist');
+select is(
+  (select count(*) from scout_search_artists('', null, null, null, null, null, 'momentum', 50)
+     where (artist->>'id') = '77777777-7777-7777-7777-777777777777'),
+  0::bigint, 'scout search HIDES an artist who opted out (visible_to_scouts=false)');
+select ok(
+  scout_artist_signals('77777777-7777-7777-7777-777777777777') is null,
+  'scout_artist_signals returns null for an opted-out artist');
+select ok(
+  scout_artist_signals('66666666-6666-6666-6666-666666666666') is not null,
+  'scout_artist_signals returns data for a visible artist');
+select ok(
+  scout_artist_signals('99999999-9999-9999-9999-999999999999') is null,
+  'scout_artist_signals HIDES a suspended artist (even with visible_to_scouts=true)');
+select throws_ok(
+  $$ select send_scout_contact('88888888-8888-8888-8888-888888888888','hi') $$,
+  '22000', null, 'a scout CANNOT contact an artist with no open_to flags');
+select throws_ok(
+  $$ select send_scout_contact('99999999-9999-9999-9999-999999999999','hi') $$,
+  '22000', null, 'a scout CANNOT contact a suspended artist');
+select lives_ok(
+  $$ select send_scout_contact('66666666-6666-6666-6666-666666666666','loved the take') $$,
+  'a scout CAN contact an artist who is open_to');
+reset role;
+
+select is(
+  (select count(*) from notifications
+     where recipient_id = '66666666-6666-6666-6666-666666666666' and kind = 'scout_contact'
+       and payload ? 'org' and not (payload ? 'email') and not (payload ? 'scout_id')),
+  1::bigint, 'the contact landed as a notification with org but no email/scout identity');
+
+-- ---- private list notes never leak across scouts -------------------------
+set local request.jwt.claims to '{"sub":"44444444-4444-4444-4444-444444444444","role":"authenticated"}';
+set local role authenticated;
+-- two statements, not a CTE: the item's WITH CHECK must see a *committed* list
+-- (a data-modifying CTE inserts both in one snapshot, so the check can't see it)
+insert into scout_lists (scout_id, name) values ('44444444-4444-4444-4444-444444444444','watchlist');
+insert into scout_list_items (list_id, artist_id, note)
+  select id, '66666666-6666-6666-6666-666666666666', 'call their manager'
+  from scout_lists where scout_id = '44444444-4444-4444-4444-444444444444' and name = 'watchlist';
+reset role;
+
+set local request.jwt.claims to '{"sub":"55555555-5555-5555-5555-555555555555","role":"authenticated"}';
+set local role authenticated;
+select is(
+  (select count(*) from scout_list_items),
+  0::bigint, 'a scout CANNOT see another scout''s list items or private notes');
+reset role;
+
+-- ---- consent toggle is the artist's own, client-writable -----------------
+set local request.jwt.claims to '{"sub":"66666666-6666-6666-6666-666666666666","role":"authenticated"}';
+set local role authenticated;
+select lives_ok(
+  $$ update profiles set visible_to_scouts = false where id = '66666666-6666-6666-6666-666666666666' $$,
+  'an artist CAN toggle their own visible_to_scouts');
+reset role;
+
+-- ---- telemetry write path (owner-excluded, deduped) ----------------------
+set local request.jwt.claims to '{"sub":"44444444-4444-4444-4444-444444444444","role":"authenticated"}';
+set local role authenticated;
+select record_listen_progress('66660000-0000-0000-0000-000000000001', 50);
+reset role;
+select set_config('request.jwt.claims', '', true);
+select is(
+  (select count(*) from listen_events where piece_id = '66660000-0000-0000-0000-000000000001' and quartile = 50),
+  1::bigint, 'record_listen_progress writes a listen_event for a non-owner listener');
+
+-- momentum counts only IDENTIFIED listens on public pieces: a guest ping and a
+-- non-owner authenticated ping both land in listen_events, but the rollup drops
+-- the guest one (so unauthenticated pings can't inflate a scout-facing score).
+insert into listen_events (piece_id, listener_id, quartile) values
+  ('66660000-0000-0000-0000-000000000001', null, 25),                                     -- guest (excluded)
+  ('66660000-0000-0000-0000-000000000001', '44444444-4444-4444-4444-444444444444', 25);   -- identified (counted)
+select refresh_artist_signals();
+select is(
+  (select listens from artist_signals_daily
+     where artist_id = '66666666-6666-6666-6666-666666666666' and day = current_date),
+  1, 'momentum counts only identified listens on public pieces (guest ping excluded)');
 
 select * from finish();
 rollback;

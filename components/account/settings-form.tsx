@@ -23,6 +23,7 @@ export function SettingsForm({
     open_to: string[];
     voice_note: string;
     quiet_mode: boolean;
+    visible_to_scouts: boolean;
     handle: string;
   };
   avatarUrl: string | null;
@@ -35,6 +36,7 @@ export function SettingsForm({
   const [openTo, setOpenTo] = useState<string[]>(initial.open_to);
   const [voiceNote, setVoiceNote] = useState(initial.voice_note);
   const [quiet, setQuiet] = useState(initial.quiet_mode);
+  const [visibleToScouts, setVisibleToScouts] = useState(initial.visible_to_scouts);
   const [avatarPath, setAvatarPath] = useState<string | null | undefined>(undefined);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(avatarUrl);
   const [saving, setSaving] = useState(false);
@@ -79,6 +81,7 @@ export function SettingsForm({
       open_to: openTo,
       voice_note: voiceNote,
       quiet_mode: quiet,
+      visible_to_scouts: visibleToScouts,
       ...(avatarPath !== undefined ? { avatar_path: avatarPath } : {}),
     });
     setSaving(false);
@@ -145,7 +148,7 @@ export function SettingsForm({
 
       <Field label="voice note">
         <input value={voiceNote} onChange={(e) => setVoiceNote(e.target.value.slice(0, 80))} placeholder="one line on how you sound" maxLength={80} className={inputCls} />
-        <span className="meta mt-1 block text-bone-32">{voiceNote.length}/80 · shown in space mono on your page</span>
+        <span className="meta mt-1 block text-bone-32">{voiceNote.length}/80</span>
       </Field>
 
       <Field label="open to">
@@ -178,7 +181,14 @@ export function SettingsForm({
       <Field label="quiet mode">
         <label className="flex cursor-pointer items-start gap-3">
           <input type="checkbox" checked={quiet} onChange={(e) => setQuiet(e.target.checked)} className="mt-0.5 size-4 accent-lime" />
-          <span className="text-sm text-bone-64">hide public reaction and follower counts on your work. reactions are still recorded — you&apos;ll see them on your dashboard.</span>
+          <span className="text-sm text-bone-64">hide public reaction and follower counts. you&apos;ll still see them on your dashboard.</span>
+        </label>
+      </Field>
+
+      <Field label="visible to scouts">
+        <label className="flex cursor-pointer items-start gap-3">
+          <input type="checkbox" checked={visibleToScouts} onChange={(e) => setVisibleToScouts(e.target.checked)} className="mt-0.5 size-4 accent-lime" />
+          <span className="text-sm text-bone-64">let vetted scouts — labels, publishers, studios — find your public work in scout tools. on by default; turn it off to stay out of every scout surface.</span>
         </label>
       </Field>
 

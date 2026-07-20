@@ -59,6 +59,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const recorded = useRef<Set<string>>(new Set());
+  const quartilesSent = useRef<Set<string>>(new Set());
+  const pendingListens = useRef<{ piece_id: string; quartile: number }[]>([]);
 
   const queueRef = useRef(queue);
   const indexRef = useRef(index);
@@ -72,31 +74,86 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setIndex((i) => (i + 1 < queueRef.current.length ? i + 1 : i));
   }, []);
 
+  // Flush buffered listen quartiles to the telemetry sink. Best-effort and
+  // survives page unload (sendBeacon, falling back to keepalive fetch).
+  const flushListens = useCallback(() => {
+    if (pendingListens.current.length === 0) return;
+    const events = pendingListens.current;
+    pendingListens.current = [];
+    const payload = JSON.stringify({ events });
+    try {
+      if (navigator.sendBeacon?.("/api/listen", new Blob([payload], { type: "application/json" }))) return;
+    } catch {
+      /* fall through to fetch */
+    }
+    try {
+      void fetch("/api/listen", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: payload,
+        keepalive: true,
+      });
+    } catch {
+      /* best-effort telemetry */
+    }
+  }, []);
+
   // bind audio events once
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const onTime = () => setTime(audio.currentTime);
+
+    // Record a crossed quartile once per track (per session); the server dedups
+    // across sessions and excludes the owner's own listens.
+    const markQuartile = (q: 25 | 50 | 75 | 100) => {
+      const id = queueRef.current[indexRef.current]?.id;
+      if (!id) return;
+      const key = `${id}:${q}`;
+      if (quartilesSent.current.has(key)) return;
+      quartilesSent.current.add(key);
+      pendingListens.current.push({ piece_id: id, quartile: q });
+      if (pendingListens.current.length >= 10) flushListens();
+    };
+
+    const onTime = () => {
+      setTime(audio.currentTime);
+      const dur = audio.duration;
+      if (!dur || !isFinite(dur)) return;
+      const pct = (audio.currentTime / dur) * 100;
+      if (pct >= 25) markQuartile(25);
+      if (pct >= 50) markQuartile(50);
+      if (pct >= 75) markQuartile(75);
+    };
     const onMeta = () => setDuration(audio.duration || 0);
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
     const onEnded = () => {
+      markQuartile(100);
+      flushListens();
       if (indexRef.current + 1 < queueRef.current.length) goNext();
       else setPlaying(false);
     };
+    const onHide = () => {
+      if (document.visibilityState === "hidden") flushListens();
+    };
+
     audio.addEventListener("timeupdate", onTime);
     audio.addEventListener("loadedmetadata", onMeta);
     audio.addEventListener("play", onPlay);
     audio.addEventListener("pause", onPause);
     audio.addEventListener("ended", onEnded);
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", flushListens);
     return () => {
       audio.removeEventListener("timeupdate", onTime);
       audio.removeEventListener("loadedmetadata", onMeta);
       audio.removeEventListener("play", onPlay);
       audio.removeEventListener("pause", onPause);
       audio.removeEventListener("ended", onEnded);
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", flushListens);
     };
-  }, [goNext]);
+  }, [goNext, flushListens]);
 
   // load + play whenever the current track changes
   useEffect(() => {

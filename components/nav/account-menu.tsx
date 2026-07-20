@@ -10,11 +10,15 @@ export function AccountMenu({
   displayName,
   avatarUrl,
   isAdmin,
+  isScout,
+  unreadNotifications,
 }: {
   handle: string;
   displayName: string;
   avatarUrl: string | null;
   isAdmin: boolean;
+  isScout: boolean;
+  unreadNotifications: number;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -55,10 +59,23 @@ export function AccountMenu({
             <p className="meta truncate">@{handle}</p>
           </div>
           <div className="my-1 h-px bg-bone-10" />
+          <Link
+            href="/notifications"
+            role="menuitem"
+            className="flex items-center justify-between px-3 py-2 text-sm text-bone-64 transition-colors hover:bg-bone-06 hover:text-bone"
+          >
+            <span>inbox</span>
+            {unreadNotifications > 0 && (
+              <span className="ml-2 min-w-[1.15rem] rounded-full bg-lime px-1 text-center text-[0.65rem] font-medium text-ink">
+                {unreadNotifications > 9 ? "9+" : unreadNotifications}
+              </span>
+            )}
+          </Link>
           <Item href={`/${handle}`}>your work</Item>
           <Item href="/dashboard">dashboard</Item>
           <Item href="/collections">collections</Item>
           <Item href="/settings">settings</Item>
+          {isScout && <Item href="/scout">scout tools</Item>}
           {isAdmin && <Item href="/admin">admin</Item>}
           <div className="my-1 h-px bg-bone-10" />
           <form action={signOut}>

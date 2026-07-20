@@ -234,12 +234,51 @@ async function main() {
   const { data: coll } = await db.from("collections").insert({ owner_id: ids[4]!, title: "on repeat, late", slug: "on-repeat-late", description: "the takes i come back to when it's quiet." }).select("id").single();
   if (coll) for (const pid of pieceIds.filter((_, i) => i % 4 === 0).slice(0, 8)) await db.from("collection_items").upsert({ collection_id: coll.id, piece_id: pid });
 
-  console.log("→ refreshing recommendations…");
-  await db.rpc("refresh_recommendations");
+  console.log("→ creating an approved scout…");
+  const scoutRes = await db.auth.admin.createUser({
+    email: `nadia_scout@${SEED_DOMAIN}`,
+    email_confirm: true,
+    password: randomUUID(),
+  });
+  if (scoutRes.error || !scoutRes.data.user) throw new Error(`createUser scout: ${scoutRes.error?.message}`);
+  const scoutId = scoutRes.data.user.id;
+  await db.from("profiles").insert({
+    id: scoutId,
+    handle: "nadia_ar",
+    display_name: "Nadia Okonkwo",
+    bio: "a&r, independent. always listening.",
+    onboarded: true,
+  });
+  await db.from("scout_accounts").insert({
+    profile_id: scoutId,
+    org_name: "Slow Loris Records",
+    status: "approved",
+  });
 
-  console.log(`\n✓ seeded ${ARTISTS.length} musicians · ${pieceIds.length} tracks`);
+  console.log("→ seeding listen telemetry…");
+  const listenRows: { piece_id: string; listener_id: string; quartile: number }[] = [];
+  for (let i = 0; i < pieceIds.length; i++) {
+    const ownerId = ids[specs[i]!.artist]!;
+    const reach = 2 + (i % 4); // a spread of listeners per track
+    for (let l = 0; l < reach; l++) {
+      const listener = ids[(i * 5 + l) % ids.length]!;
+      if (listener === ownerId) continue; // never the owner
+      listenRows.push({ piece_id: pieceIds[i]!, listener_id: listener, quartile: 25 });
+      if (l % 2 === 0) listenRows.push({ piece_id: pieceIds[i]!, listener_id: listener, quartile: 50 });
+      if (l % 3 === 0) listenRows.push({ piece_id: pieceIds[i]!, listener_id: listener, quartile: 100 });
+    }
+  }
+  if (listenRows.length) await db.from("listen_events").insert(listenRows);
+
+  console.log("→ refreshing recommendations + talent signals…");
+  await db.rpc("refresh_recommendations");
+  await db.rpc("refresh_artist_signals");
+
+  console.log(`\n✓ seeded ${ARTISTS.length} musicians · ${pieceIds.length} tracks · 1 scout (nadia_ar)`);
   console.log("  sign up with your own email to explore as a listener.");
   console.log("  to grant yourself admin: update profiles set role='admin' where handle='<you>';");
+  console.log("  to explore scout tools, approve your own account:");
+  console.log("    insert into scout_accounts(profile_id,org_name,status) select id,'Your Org','approved' from profiles where handle='<you>';");
 }
 
 main().catch((e) => {

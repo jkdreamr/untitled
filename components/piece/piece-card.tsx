@@ -53,7 +53,6 @@ export function PieceCard({
           </Link>
           <p className="meta flex items-center gap-1.5 truncate">
             <span className="truncate">@{card.artist.handle}</span>
-            <span className="meta-caps">{card.medium === "video" ? "video" : "audio"}</span>
             <TrackKindTag kind={card.track_kind} />
           </p>
         </div>

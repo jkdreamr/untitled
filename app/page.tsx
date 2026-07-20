@@ -17,15 +17,12 @@ export default async function LandingPage() {
   return (
     <>
       <Preloader />
-      <div className="relative">
+      <div className="relative flex min-h-dvh flex-col">
         {/* header */}
         <header className="sticky top-0 z-40 border-b border-bone-10 bg-ink/70 backdrop-blur-md">
           <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6 sm:px-10">
             <Logo size="md" />
             <nav className="flex items-center gap-1 sm:gap-2">
-              <Link href="/wander" className={buttonClasses("ghost", "sm")}>
-                wander
-              </Link>
               <Link href="/login" className={buttonClasses("ghost", "sm", "hidden sm:inline-flex")}>
                 sign in
               </Link>
@@ -36,137 +33,60 @@ export default async function LandingPage() {
           </div>
         </header>
 
-        <main id="main">
-          {/* hero */}
-          <section className="mx-auto max-w-6xl px-6 pb-16 pt-20 sm:px-10 sm:pt-28">
-            <p className="meta meta-caps mb-8 text-bone-46 [animation:fade-in_.3s_ease-out_both]">
+        <main id="main" className="flex-1">
+          {/* 1 — hero */}
+          <section className="mx-auto max-w-6xl px-6 pb-12 pt-20 sm:px-10 sm:pt-28">
+            <p className="meta meta-caps mb-8 text-bone-52 [animation:fade-in_.3s_ease-out_both]">
               a product of NOVUM Labs
             </p>
-            <div className="grid gap-10 lg:grid-cols-[1.4fr_1fr] lg:items-end">
+            <div className="grid gap-8 lg:grid-cols-[1.5fr_1fr] lg:items-end">
               <h1 className="display text-[clamp(3.2rem,9vw,7.5rem)] text-bone [animation:rise-in_.3s_var(--ease-out)_both]">
                 post the take.
                 <br />
                 <span className="text-bone-46 italic">skip everything else.</span>
               </h1>
               <div className="max-w-md [animation:rise-in_.3s_var(--ease-out)_.08s_both]">
-                <p className="text-[1.05rem] leading-relaxed text-bone-64">
-                  the raw thing itself — the voice memo, the one-take cover, the verse over a beat,
-                  the phone video at the piano. no polishing, no captions to optimize, no algorithm
-                  to feed.
+                <p className="text-[1.15rem] leading-relaxed text-bone-64">
+                  raw music from real people. no polish, no rankings, no algorithm to feed.
                 </p>
-                <div className="mt-8 flex flex-wrap items-center gap-3">
+                <div className="mt-7">
                   <Link href="/login" className={buttonClasses("solid", "lg")}>
                     start posting
                   </Link>
-                  <Link href="/wander" className={buttonClasses("outline", "lg")}>
-                    wander the feed
-                  </Link>
                 </div>
-                <p className="meta mt-6 text-bone-32">
-                  raw music, human-made · ai only finds it · titles optional
-                </p>
               </div>
             </div>
           </section>
 
-          {/* live strip */}
-          <section aria-labelledby="strip-h" className="border-y border-bone-10 py-10">
-            <div className="mx-auto mb-5 flex max-w-6xl items-center justify-between px-6 sm:px-10">
-              <h2 id="strip-h" className="meta meta-caps text-bone-46">
-                posted lately
-              </h2>
-              <Link href="/wander" className="meta text-bone-46 transition-colors hover:text-bone">
-                see more →
-              </Link>
-            </div>
-            <div className="no-scrollbar flex gap-4 overflow-x-auto px-6 pb-2 sm:px-10">
+          {/* 2 — the takes: the whole argument */}
+          <section aria-label="recent takes" className="border-y border-bone-10 py-12 sm:py-16">
+            <div className="no-scrollbar flex gap-5 overflow-x-auto px-6 pb-1 sm:px-10 [animation:fade-in_.4s_ease-out_.12s_both]">
               {previews.map((item, i) => (
-                <PreviewCard key={`${item.artistHandle}-${i}`} item={item} index={i} />
+                <Link
+                  key={`${item.artistHandle}-${i}`}
+                  href="/wander"
+                  aria-label={`hear ${item.artistName}'s take`}
+                  className="shrink-0 rounded-lg transition-transform duration-200 ease-out hover:-translate-y-1 focus-visible:-translate-y-1"
+                >
+                  <PreviewCard item={item} index={i} />
+                </Link>
               ))}
               <div className="w-2 shrink-0" aria-hidden />
             </div>
           </section>
 
-          {/* pledge */}
-          <section className="mx-auto max-w-6xl px-6 py-24 sm:px-10">
-            <div className="grid gap-12 md:grid-cols-[1fr_1.2fr] md:items-start">
-              <div>
-                <h2 className="meta meta-caps text-lime">the pledge</h2>
-                <p className="display mt-5 text-[clamp(2rem,4vw,3.25rem)] text-bone">
-                  everything here was made by a person.
-                </p>
-              </div>
-              <div className="space-y-6 text-[1.05rem] leading-relaxed text-bone-64 md:pt-14">
-                <p>
-                  no AI-generated vocals, instrumentals, or lyrics as posted work. one tap at
-                  upload — <span className="text-bone">“I made this”</span> — and a terms clause that
-                  forbids training on anything you post here.
-                </p>
-                <p>
-                  we&apos;re not against the tools. we&apos;re for the making. AI stays in two lanes:
-                  making your lyrics searchable, and helping the right listener find you. it never
-                  generates, filters, or “improves” a single take.
-                </p>
-                <p className="meta text-bone-46">
-                  every public page ships{" "}
-                  <code className="text-bone-64">noai, noimageai</code> — in the meta and the
-                  headers.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* discovery */}
-          <section className="border-t border-bone-10 bg-ink-raised/30">
-            <div className="mx-auto max-w-6xl px-6 py-24 sm:px-10">
-              <h2 className="display text-[clamp(1.8rem,3.5vw,2.75rem)] text-bone">
-                raw music, human-made — <span className="text-bone-46 italic">AI only finds it.</span>
-              </h2>
-              <div className="mt-14 grid gap-x-10 gap-y-12 sm:grid-cols-3">
-                <Feature
-                  n="01"
-                  title="search that hears the words"
-                  body="natural-language, and it reads the lyrics too. “melancholic bedroom guitar cover, low voice” or a line you half-remember — it matches the actual audio and the words in it."
-                />
-                <Feature
-                  n="02"
-                  title="find the musician"
-                  body="search by sound, by role, by who's open to work. a producer looking for a low alto, a writer open to features — discovery points at people, not just tracks."
-                />
-                <Feature
-                  n="03"
-                  title="no rankings, ever"
-                  body="the following feed is strictly reverse-chronological. no trending, no leaderboards, nothing optimized for time-on-app. artists never pay to be heard."
-                />
-              </div>
-            </div>
-          </section>
-
-          {/* the take */}
-          <section className="mx-auto max-w-6xl px-6 py-24 sm:px-10">
-            <h2 className="meta meta-caps mb-10 text-bone-46">everything is a track</h2>
-            <dl className="grid gap-px overflow-hidden rounded-lg border border-bone-10 bg-bone-10 sm:grid-cols-2">
-              <Format name="audio" limit="up to 6 min" body="voice memos, one-take covers, demos, verses over a beat, a cappella — the waveform shows up the second you drop the file." />
-              <Format name="video" limit="up to 3 min" body="singing, playing, performing — the phone video at the piano. muted poster, tap to play." />
-            </dl>
-            <p className="mt-6 max-w-2xl text-[0.95rem] leading-relaxed text-bone-46">
-              lyrics ride along with the take — paste them, or let us transcribe the vocal for you to
-              confirm. covers, freestyles, and beats each get their own tag, so the right thing finds
-              the right ears.
+          {/* 3 — pledge + close */}
+          <section className="mx-auto max-w-3xl px-6 py-24 text-center sm:px-10 sm:py-32">
+            <p className="meta meta-caps mb-6 text-lime">the pledge</p>
+            <p className="display text-[clamp(2.2rem,5vw,3.5rem)] leading-[1.05] text-bone">
+              everything here was made by a person.
             </p>
-          </section>
-
-          {/* final CTA */}
-          <section className="border-t border-bone-10">
-            <div className="mx-auto flex max-w-6xl flex-col items-start gap-8 px-6 py-28 sm:px-10">
-              <h2 className="display text-[clamp(2.5rem,7vw,5.5rem)] text-bone">
-                nothing here yet? <br className="hidden sm:block" />
-                <span className="text-bone-46 italic">that&apos;s the point.</span>
-              </h2>
-              <p className="max-w-md text-[1.05rem] leading-relaxed text-bone-64">
-                post the first take. it takes under thirty seconds, and the waveform shows up the
-                instant you drop the file.
-              </p>
+            <p className="mx-auto mt-6 max-w-xl text-[1.05rem] leading-relaxed text-bone-64">
+              one tap at upload — <span className="text-bone">&ldquo;I made this&rdquo;</span> — and a
+              terms clause that forbids training on it. AI never makes the music; it only helps the
+              right listener find you.
+            </p>
+            <div className="mt-10">
               <Link href="/login" className={buttonClasses("solid", "lg")}>
                 post the first take
               </Link>
@@ -177,27 +97,5 @@ export default async function LandingPage() {
         <MarketingFooter />
       </div>
     </>
-  );
-}
-
-function Feature({ n, title, body }: { n: string; title: string; body: string }) {
-  return (
-    <div>
-      <span className="meta text-lime">{n}</span>
-      <h3 className="mt-3 text-lg font-medium text-bone">{title}</h3>
-      <p className="mt-3 text-[0.95rem] leading-relaxed text-bone-64">{body}</p>
-    </div>
-  );
-}
-
-function Format({ name, limit, body }: { name: string; limit: string; body: string }) {
-  return (
-    <div className="bg-ink p-6">
-      <div className="flex items-baseline justify-between">
-        <h3 className="font-serif text-2xl text-bone">{name}</h3>
-        <span className="meta text-bone-32">{limit}</span>
-      </div>
-      <p className="mt-4 text-[0.9rem] leading-relaxed text-bone-46">{body}</p>
-    </div>
   );
 }

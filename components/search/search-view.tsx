@@ -194,9 +194,6 @@ export function SearchView({
         ) : !touched ? (
           <div className="py-16 text-center">
             <p className="font-serif text-2xl text-bone-64">search the whole room.</p>
-            <p className="mt-2 text-sm text-bone-52">
-              a line of lyrics, a mood, a role. it finds the track — and the musician behind it.
-            </p>
           </div>
         ) : null}
       </div>

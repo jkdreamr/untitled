@@ -98,7 +98,7 @@ export default async function PiecePage({ params }: { params: Promise<{ id: stri
         )}
         <div className="mt-1 flex items-center gap-2">
           <p className="meta">
-            {formatPieceDate(card.published_at)} · <span className="meta-caps">{card.medium === "video" ? "video" : "audio"}</span>
+            {formatPieceDate(card.published_at)}
             {audio?.duration_seconds ? ` · ${formatDuration(audio.duration_seconds)}` : ""}
           </p>
           <TrackKindTag kind={card.track_kind} />

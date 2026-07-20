@@ -65,5 +65,5 @@ export async function completeOnboarding(_prev: OnboardState, formData: FormData
     return { ok: false, error: "couldn't save that. try again." };
   }
 
-  redirect("/compose?welcome=1");
+  redirect("/compose");
 }
