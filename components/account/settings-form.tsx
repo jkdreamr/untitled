@@ -145,7 +145,7 @@ export function SettingsForm({
 
       <Field label="voice note">
         <input value={voiceNote} onChange={(e) => setVoiceNote(e.target.value.slice(0, 80))} placeholder="one line on how you sound" maxLength={80} className={inputCls} />
-        <span className="meta mt-1 block text-bone-32">{voiceNote.length}/80 · shown in space mono on your page</span>
+        <span className="meta mt-1 block text-bone-32">{voiceNote.length}/80</span>
       </Field>
 
       <Field label="open to">
@@ -178,7 +178,7 @@ export function SettingsForm({
       <Field label="quiet mode">
         <label className="flex cursor-pointer items-start gap-3">
           <input type="checkbox" checked={quiet} onChange={(e) => setQuiet(e.target.checked)} className="mt-0.5 size-4 accent-lime" />
-          <span className="text-sm text-bone-64">hide public reaction and follower counts on your work. reactions are still recorded — you&apos;ll see them on your dashboard.</span>
+          <span className="text-sm text-bone-64">hide public reaction and follower counts. you&apos;ll still see them on your dashboard.</span>
         </label>
       </Field>
 

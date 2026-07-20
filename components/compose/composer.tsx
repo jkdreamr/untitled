@@ -15,11 +15,11 @@ type Kind = TrackMedium | null;
 interface AudioMeta { path: string; duration: number; peaks: number[]; mime: string; bytes: number }
 interface AfterRef { id: string; label: string; handle: string }
 
-const TRACK_KINDS: { value: TrackKind; label: string; hint: string }[] = [
-  { value: "original", label: "original", hint: "your own song" },
-  { value: "cover", label: "cover", hint: "someone else's song" },
-  { value: "freestyle", label: "freestyle", hint: "off the top / over a beat" },
-  { value: "beat", label: "beat", hint: "an instrumental, no vocals" },
+const TRACK_KINDS: { value: TrackKind; label: string }[] = [
+  { value: "original", label: "original" },
+  { value: "cover", label: "cover" },
+  { value: "freestyle", label: "freestyle" },
+  { value: "beat", label: "beat" },
 ];
 
 function detectKind(file: File): TrackMedium | "unknown" {
@@ -31,7 +31,7 @@ function detectKind(file: File): TrackMedium | "unknown" {
   return "unknown";
 }
 
-export function Composer({ videoEnabled, welcome }: { videoEnabled: boolean; welcome: boolean }) {
+export function Composer({ videoEnabled }: { videoEnabled: boolean }) {
   const [kind, setKind] = useState<Kind>(null);
   const [pieceId, setPieceId] = useState<string>("");
   const [busy, setBusy] = useState(false);
@@ -167,12 +167,6 @@ export function Composer({ videoEnabled, welcome }: { videoEnabled: boolean; wel
         </div>
       )}
 
-      {welcome && kind === null && (
-        <p className="mb-6 text-center font-serif text-2xl text-bone">
-          welcome in. post the first take.
-        </p>
-      )}
-
       {kind === null ? (
         <DropZone inputRef={inputRef} onFiles={onFiles} videoEnabled={videoEnabled} busy={busy} />
       ) : (
@@ -204,10 +198,7 @@ export function Composer({ videoEnabled, welcome }: { videoEnabled: boolean; wel
 
           {error && <p role="alert" className="text-sm text-bone-64">{error}</p>}
 
-          <div className="flex items-center justify-between border-t border-bone-10 pt-6">
-            <p className="meta max-w-xs text-bone-52">
-              posts as untitled unless you title it. searchable the moment it lands.
-            </p>
+          <div className="flex items-center justify-end border-t border-bone-10 pt-6">
             <Button variant="solid" size="lg" onClick={publish} disabled={!ready || !attested || publishing}>
               {publishing ? "posting…" : "post it"}
             </Button>
@@ -243,9 +234,6 @@ function DropZone({
       >
         <div>
           <h1 className="font-serif text-4xl text-bone sm:text-5xl">drop the take.</h1>
-          <p className="mt-3 text-sm text-bone-46">
-            a voice memo, a one-take cover, a verse over a beat{videoEnabled ? ", a video at the piano" : ""}. we&apos;ll figure out the rest.
-          </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Button variant="solid" size="lg" onClick={() => inputRef.current?.click()} disabled={busy}>
               choose a file
@@ -258,9 +246,6 @@ function DropZone({
             className="sr-only"
             onChange={(e) => onFiles(e.target.files)}
           />
-          <p className="meta mt-8 text-bone-32">
-            audio ≤ 6 min{videoEnabled ? " · video ≤ 3 min" : ""} · lyrics optional
-          </p>
         </div>
       </div>
     </div>
@@ -346,7 +331,6 @@ function PublishForm(props: {
 
       {/* track kind */}
       <div>
-        <p className="meta meta-caps mb-2 text-bone-52">what is it</p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {TRACK_KINDS.map((k) => {
             const on = trackKind === k.value;
@@ -362,7 +346,6 @@ function PublishForm(props: {
                 )}
               >
                 <span className={cn("block text-sm", on ? "text-lime" : "text-bone")}>{k.label}</span>
-                <span className="meta mt-0.5 block text-bone-52">{k.hint}</span>
               </button>
             );
           })}
@@ -393,14 +376,14 @@ function PublishForm(props: {
       {!isBeat && (
         <label className="flex cursor-pointer items-center gap-3">
           <input type="checkbox" checked={hasVocals} onChange={(e) => setHasVocals(e.target.checked)} className="size-4 accent-lime" />
-          <span className="text-sm text-bone-64">this has vocals <span className="text-bone-32">— we&apos;ll help make the lyrics searchable</span></span>
+          <span className="text-sm text-bone-64">this has vocals</span>
         </label>
       )}
 
       {/* lyrics (hidden for beats) */}
       {!isBeat && (
         <div>
-          <p className="meta meta-caps mb-2 text-bone-52">lyrics <span className="text-bone-32">· optional</span></p>
+          <p className="meta meta-caps mb-2 text-bone-52">lyrics</p>
           <textarea
             value={lyrics}
             onChange={(e) => setLyrics(e.target.value.slice(0, 4000))}
@@ -443,7 +426,6 @@ function PublishForm(props: {
 
       {/* visibility */}
       <div>
-        <p className="meta meta-caps mb-2 text-bone-52">who sees it</p>
         <div className="inline-flex rounded-full border border-bone-16 p-1">
           {(["public", "followers", "unlisted"] as Visibility[]).map((v) => (
             <button key={v} type="button" onClick={() => setVisibility(v)} aria-pressed={visibility === v} className={cn("rounded-full px-4 py-1.5 text-sm transition-colors", visibility === v ? "bg-bone text-ink" : "text-bone-64 hover:text-bone")}>
@@ -481,7 +463,7 @@ function AfterPicker({ after, setAfter }: { after: AfterRef | null; setAfter: (v
   }
   return (
     <div>
-      <p className="meta meta-caps mb-2 text-bone-52">after (optional)</p>
+      <p className="meta meta-caps mb-2 text-bone-52">after</p>
       <input value={q} onChange={(e) => onChange(e.target.value)} placeholder="the original a cover answers, the track a freestyle rides…" className="h-11 w-full rounded-lg border border-bone-16 bg-ink-sunken px-4 text-sm text-bone outline-none placeholder:text-bone-32 focus-visible:border-lime/40" />
       {results.length > 0 && (
         <div className="mt-2 overflow-hidden rounded-lg border border-bone-10">

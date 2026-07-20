@@ -18,9 +18,6 @@ export default async function FeedPage() {
     return (
       <div className="mx-auto max-w-xl px-6 py-24 text-center">
         <h1 className="font-serif text-3xl text-bone">your feed is quiet.</h1>
-        <p className="mt-3 text-sm leading-relaxed text-bone-46">
-          nothing here yet — that&apos;s the point. follow a few artists, or post the first take.
-        </p>
         <div className="mt-8 flex items-center justify-center gap-3">
           <Link href="/wander" className={buttonClasses("solid", "md")}>
             wander in
@@ -35,9 +32,8 @@ export default async function FeedPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 sm:px-6">
-      <div className="flex items-baseline justify-between py-6">
+      <div className="py-6">
         <h1 className="font-serif text-2xl text-bone">following</h1>
-        <span className="meta">reverse-chronological · no ranking</span>
       </div>
       <FeedStream
         initialNode={<FeedItems cards={cards} authed={!!user} firstPriority />}

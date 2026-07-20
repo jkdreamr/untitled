@@ -67,7 +67,7 @@ export function OnboardingFlow({ seed }: { seed: string }) {
         <section className="[animation:veil-up_.28s_var(--ease-out)_both]">
           <p className="meta meta-caps text-bone-46">step one</p>
           <h1 className="mt-2 font-serif text-4xl text-bone">pick a handle.</h1>
-          <p className="mt-2 text-sm text-bone-46">this is your address. lowercase, permanent-ish.</p>
+          <p className="mt-2 text-sm text-bone-46">lowercase, and permanent-ish.</p>
           <div className="mt-8">
             <div className="flex items-center rounded-full border border-bone-16 bg-ink-sunken px-5 focus-within:border-lime/50">
               <span className="text-bone-32">@</span>
@@ -93,7 +93,7 @@ export function OnboardingFlow({ seed }: { seed: string }) {
         <section className="[animation:veil-up_.28s_var(--ease-out)_both]">
           <p className="meta meta-caps text-bone-46">step two</p>
           <h1 className="mt-2 font-serif text-4xl text-bone">what should we call you?</h1>
-          <p className="mt-2 text-sm text-bone-46">a name, not a brand. change it whenever.</p>
+          <p className="mt-2 text-sm text-bone-46">a name, not a brand.</p>
           <input
             autoFocus
             value={displayName}
@@ -111,7 +111,7 @@ export function OnboardingFlow({ seed }: { seed: string }) {
           <p className="meta meta-caps text-bone-46">step three</p>
           <h1 className="mt-2 font-serif text-4xl text-bone">what pulls you in?</h1>
           <p className="mt-2 text-sm text-bone-46">
-            pick at least 3. this seeds discovery — you can always change it.
+            pick at least 3 — it seeds what you discover.
           </p>
           <div className="mt-6 max-h-[46vh] space-y-5 overflow-y-auto pr-1">
             {TAXONOMY.map((group) => (
