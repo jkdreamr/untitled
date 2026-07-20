@@ -30,6 +30,7 @@ const profileSchema = z.object({
   open_to: z.array(z.string()).max(4).default([]).refine((t) => t.every((x) => (OPEN_TO as readonly string[]).includes(x)), "unknown option"),
   voice_note: z.string().trim().max(80).optional().default(""),
   quiet_mode: z.boolean(),
+  visible_to_scouts: z.boolean(),
   avatar_path: z.string().max(200).nullable().optional(),
 });
 
@@ -56,6 +57,7 @@ export async function updateProfile(input: z.infer<typeof profileSchema>): Promi
       open_to: parsed.data.open_to,
       voice_note: parsed.data.voice_note || null,
       quiet_mode: parsed.data.quiet_mode,
+      visible_to_scouts: parsed.data.visible_to_scouts,
       ...(parsed.data.avatar_path !== undefined ? { avatar_path: parsed.data.avatar_path } : {}),
     })
     .eq("id", user.id);

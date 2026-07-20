@@ -31,6 +31,7 @@ export default async function SettingsPage() {
           open_to: profile.open_to ?? [],
           voice_note: profile.voice_note ?? "",
           quiet_mode: profile.quiet_mode,
+          visible_to_scouts: profile.visible_to_scouts,
           handle: profile.handle,
         }}
         avatarUrl={avatarUrl}
