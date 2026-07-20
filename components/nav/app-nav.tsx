@@ -9,6 +9,8 @@ export interface NavProfile {
   displayName: string;
   avatarUrl: string | null;
   isAdmin: boolean;
+  isScout: boolean;
+  unreadNotifications: number;
 }
 
 export function AppNav({ profile }: { profile: NavProfile | null }) {
@@ -33,6 +35,8 @@ export function AppNav({ profile }: { profile: NavProfile | null }) {
                 displayName={profile.displayName}
                 avatarUrl={profile.avatarUrl}
                 isAdmin={profile.isAdmin}
+                isScout={profile.isScout}
+                unreadNotifications={profile.unreadNotifications}
               />
             </>
           ) : (
