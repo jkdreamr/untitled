@@ -104,7 +104,9 @@ Set the env vars above in the Vercel project. Two things wire up automatically:
 - **Mux webhook**: point a Mux webhook at `https://<your-domain>/api/mux/webhook`
   (event `video.asset.ready`) and set `MUX_WEBHOOK_SECRET` to its signing secret.
 
-Recommendation neighborhoods refresh nightly via `pg_cron` (migration `0013`).
+Recommendation neighborhoods refresh nightly via `pg_cron` (migration `0013`,
+04:00 UTC). Talent-signal rollups + momentum refresh nightly too (migration
+`0025`, 05:00 UTC); trigger a rebuild by hand with `select refresh_artist_signals();`.
 
 ---
 
@@ -160,6 +162,14 @@ is weight B.
   status='active'`; artists get full CRUD on their own rows; social writes only
   as `auth.uid()`. `piece_search` / `enrichment_jobs` / `rate_limits` /
   `piece_neighbors` are never client-readable.
+- **Talent signals + Scout: backend/gated only.** `artist_signals_daily`,
+  `artist_momentum`, `scout_queries`, and `listen_events` are locked down (RLS +
+  `revoke all`) and reached only through scout-gated SECURITY DEFINER RPCs;
+  momentum never enters a consumer feed/wander/search. Scout access is a separate
+  `scout_accounts` grant (`is_scout()`, an `is_admin()`-style helper), artists opt
+  out with `visible_to_scouts=false`, and contacting an artist never exposes their
+  email — it lands as an in-app notification. Grant a scout with the admin-only
+  `grant_scout(profile_id, org_name)` RPC (or seed one via `pnpm seed`).
 - **Column-level GRANTs** (not table-grant + column-revoke — that doesn't work):
   authenticated cannot write `role`, `suspended`, `sequence_no`, or the
   denormalized counters, and cannot read the count columns (quiet-mode masking
@@ -182,7 +192,9 @@ supabase test db          # runs supabase/tests/rls.test.sql
 ```
 It verifies: anon can't read private pieces · user A can't edit B's piece ·
 `artist_id` can't be forged · deleted pieces invisible · quiet-mode counts not
-exposed to others · `piece_search` never client-readable.
+exposed to others · `piece_search` never client-readable · signals/momentum
+never consumer-readable · opted-out artists invisible to scouts · scout notes
+never leak across scouts · contact honors `open_to` and never leaks email.
 
 ---
 
@@ -236,8 +248,9 @@ app/
   (marketing)/        landing chrome · scout · terms · privacy · dmca
   (auth)/             login · onboarding
   (app)/              feed · wander · search · compose · piece · [handle] ·
-                      collections · c/[id] · dashboard · settings · admin
-  api/                media/avatar · mux/* · search · enrichment/run
+                      collections · c/[id] · dashboard · settings · admin ·
+                      notifications · scout/{search,lists,artist} (scout-gated)
+  api/                media/avatar · mux/* · search · enrichment/run · listen
   auth/callback/      magic-link / OAuth exchange
 components/           brand · nav · player · piece · feed · wander · search · …
 lib/
@@ -247,8 +260,8 @@ lib/
   enrichment/         worker + vision + transcription
   compose/ piece/ account/ admin/ …   server actions
 supabase/
-  migrations/         0001–0017 (schema, RLS, RPCs, storage, recs, cron,
-                      hardening, music pivot)
+  migrations/         0001–0028 (schema, RLS, RPCs, storage, recs, cron,
+                      hardening, music pivot, talent signals + scout)
   functions/embed/    gte-small edge function
   tests/rls.test.sql  pgTAP
 scripts/seed.ts       pnpm seed
