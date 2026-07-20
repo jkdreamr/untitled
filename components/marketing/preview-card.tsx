@@ -7,11 +7,11 @@ const MEDIUM_GLYPH: Record<PreviewItem["medium"], string> = {
   video: "video",
 };
 
-/** A compact, non-interactive preview used on the landing strip. */
+/** A preview on the landing strip. Wrapped in a Link to /wander by the page. */
 export function PreviewCard({ item, index = 0 }: { item: PreviewItem; index?: number }) {
   return (
     <figure
-      className="group flex w-[19rem] shrink-0 flex-col gap-3 rounded-lg border border-bone-10 bg-ink-raised/60 p-3 opacity-0 [animation:rise-in_.32s_var(--ease-out)_both]"
+      className="group flex w-[21rem] shrink-0 flex-col gap-3 rounded-lg border border-bone-10 bg-ink-raised/60 p-3 opacity-0 transition-colors duration-200 hover:border-bone-16 [animation:rise-in_.32s_var(--ease-out)_both]"
       style={{ animationDelay: `${120 + index * 70}ms` }}
     >
       <Body item={item} />
@@ -29,9 +29,9 @@ export function PreviewCard({ item, index = 0 }: { item: PreviewItem; index?: nu
 function Body({ item }: { item: PreviewItem }) {
   if (item.medium === "sound") {
     return (
-      <div className="flex h-40 flex-col justify-between rounded-md bg-ink-sunken/70 p-4">
+      <div className="flex h-48 flex-col justify-between rounded-md bg-ink-sunken/70 p-4">
         <div className="flex items-center gap-2">
-          <span className="grid size-8 place-items-center rounded-full border border-bone-16 text-bone">
+          <span className="grid size-8 place-items-center rounded-full border border-bone-16 text-bone transition-colors group-hover:border-lime/60 group-hover:text-lime">
             <PlayGlyph />
           </span>
           <span className="meta">{formatDuration(item.duration)}</span>
@@ -49,13 +49,13 @@ function Body({ item }: { item: PreviewItem }) {
   // video
   const src = item.imageUrl ?? item.imageSvg;
   return (
-    <div className="relative h-40 overflow-hidden rounded-md bg-ink-sunken">
+    <div className="relative h-48 overflow-hidden rounded-md bg-ink-sunken">
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element -- data URI or short-lived signed URL
         <img src={src} alt={item.title ?? ""} className="h-full w-full object-cover" />
       ) : null}
       <span className="absolute inset-0 grid place-items-center">
-        <span className="grid size-11 place-items-center rounded-full bg-ink-veil text-bone backdrop-blur-sm">
+        <span className="grid size-11 place-items-center rounded-full bg-ink-veil text-bone backdrop-blur-sm transition-colors group-hover:text-lime">
           <PlayGlyph />
         </span>
       </span>
