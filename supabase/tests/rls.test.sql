@@ -12,7 +12,7 @@
 -- ============================================================================
 
 begin;
-select plan(38);
+select plan(41);
 
 -- ---- fixtures (as the migration/superuser role) -------------------------
 -- three auth users: A (author), B (other), Q (quiet-mode author)
@@ -220,6 +220,15 @@ insert into pieces (id, artist_id, medium, visibility, status, attested, sequenc
   ('77770000-0000-0000-0000-000000000001','77777777-7777-7777-7777-777777777777','sound','public','active',true,0),
   ('88880000-0000-0000-0000-000000000001','88888888-8888-8888-8888-888888888888','sound','public','active',true,0);
 
+-- a suspended (moderated) artist: visible_to_scouts stays true, but `suspended`
+-- must still hide them from every scout surface
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password,
+  email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data)
+values ('99999999-9999-9999-9999-999999999999','00000000-0000-0000-0000-000000000000','authenticated','authenticated','susp@test.dev','x',now(),now(),now(),'{}','{}')
+on conflict (id) do nothing;
+insert into profiles (id, handle, display_name, onboarded, roles, open_to, visible_to_scouts, suspended)
+values ('99999999-9999-9999-9999-999999999999','test_susp','Suspended', true, '{vocalist}', '{collabs}', true, true);
+
 -- (B0.1) no consumer RPC references any signals/scout/notification table
 select is(
   (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
@@ -268,9 +277,15 @@ select ok(
 select ok(
   scout_artist_signals('66666666-6666-6666-6666-666666666666') is not null,
   'scout_artist_signals returns data for a visible artist');
+select ok(
+  scout_artist_signals('99999999-9999-9999-9999-999999999999') is null,
+  'scout_artist_signals HIDES a suspended artist (even with visible_to_scouts=true)');
 select throws_ok(
   $$ select send_scout_contact('88888888-8888-8888-8888-888888888888','hi') $$,
   '22000', null, 'a scout CANNOT contact an artist with no open_to flags');
+select throws_ok(
+  $$ select send_scout_contact('99999999-9999-9999-9999-999999999999','hi') $$,
+  '22000', null, 'a scout CANNOT contact a suspended artist');
 select lives_ok(
   $$ select send_scout_contact('66666666-6666-6666-6666-666666666666','loved the take') $$,
   'a scout CAN contact an artist who is open_to');
@@ -317,6 +332,18 @@ select set_config('request.jwt.claims', '', true);
 select is(
   (select count(*) from listen_events where piece_id = '66660000-0000-0000-0000-000000000001' and quartile = 50),
   1::bigint, 'record_listen_progress writes a listen_event for a non-owner listener');
+
+-- momentum counts only IDENTIFIED listens on public pieces: a guest ping and a
+-- non-owner authenticated ping both land in listen_events, but the rollup drops
+-- the guest one (so unauthenticated pings can't inflate a scout-facing score).
+insert into listen_events (piece_id, listener_id, quartile) values
+  ('66660000-0000-0000-0000-000000000001', null, 25),                                     -- guest (excluded)
+  ('66660000-0000-0000-0000-000000000001', '44444444-4444-4444-4444-444444444444', 25);   -- identified (counted)
+select refresh_artist_signals();
+select is(
+  (select listens from artist_signals_daily
+     where artist_id = '66666666-6666-6666-6666-666666666666' and day = current_date),
+  1, 'momentum counts only identified listens on public pieces (guest ping excluded)');
 
 select * from finish();
 rollback;
